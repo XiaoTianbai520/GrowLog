@@ -1118,6 +1118,15 @@ progress::-webkit-progress-value {
   color: var(--muted);
   max-width: 87px;
 }
+.folder-view-switch {
+  margin: 0 17px 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+}
+.folder-view-switch button {
+  padding: 4px 8px;
+}
 .note-list {
   overflow-y: auto;
   flex: 1;
@@ -1565,6 +1574,214 @@ progress::-webkit-progress-value {
   color: var(--faint);
   font-size: 10px;
   margin-top: 22px;
+}
+.mind-map {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+.mind-map-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 31px 34px 25px;
+  border-bottom: 1px solid var(--line);
+}
+.mind-map-header .eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--accent-text);
+}
+.mind-map-header h2 {
+  font-size: 24px;
+  letter-spacing: -0.4px;
+}
+.mind-map-header p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mind-map-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--faint);
+  font-size: 10px;
+  white-space: nowrap;
+  padding-top: 13px;
+}
+.mind-map-stats strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+}
+.mind-map-stats i {
+  height: 18px;
+  border-left: 1px solid var(--line-strong);
+}
+.mind-map-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 38px 55px 80px;
+  background-image: radial-gradient(var(--line) 0.7px, transparent 0.7px);
+  background-size: 19px 19px;
+}
+.mind-tree {
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  min-width: 100%;
+}
+.mind-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 42px;
+  position: relative;
+}
+.mind-tree li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding: 6px 0;
+}
+.mind-tree li::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 23px;
+  width: 21px;
+  border-top: 1px solid var(--decor-line);
+}
+.mind-tree li::after {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: -6px;
+  bottom: -6px;
+  border-left: 1px solid var(--decor-line);
+}
+.mind-tree li:first-child::after {
+  top: 23px;
+}
+.mind-tree li:last-child::after {
+  bottom: calc(100% - 23px);
+}
+.mind-tree li:only-child::after {
+  display: none;
+}
+.mind-root,
+.mind-node {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: 0 2px 8px #00000008;
+}
+.mind-root {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 140px;
+  max-width: 230px;
+  padding: 12px 15px;
+  border-color: var(--accent);
+  border-radius: 8px 18px 18px 8px;
+  color: var(--accent-text);
+  font-weight: 600;
+  margin-top: 6px;
+}
+.mind-root span {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.mind-notes::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 29px;
+  width: 21px;
+  border-top: 1px solid var(--decor-line);
+}
+.mind-node {
+  justify-content: flex-start;
+  max-width: 245px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: 7px;
+  text-align: left;
+  line-height: 1.35;
+}
+.mind-node:hover {
+  border-color: var(--accent);
+  background: var(--hover);
+  transform: translateY(-1px);
+}
+.note-node {
+  min-width: 145px;
+  color: var(--text);
+  font-weight: 600;
+}
+.note-node svg {
+  color: var(--accent-text);
+}
+.heading-node {
+  min-width: 125px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.heading-node span,
+.note-node span {
+  overflow-wrap: anywhere;
+}
+.heading-node small {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 8px;
+  padding-left: 9px;
+}
+.mind-leaf-empty {
+  align-self: center;
+  margin: 0 0 0 15px;
+  color: var(--faint);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.mind-map-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+}
+.mind-map-empty h3 {
+  margin-top: 15px;
+  color: var(--text);
+  font-size: 15px;
+}
+.mind-map-empty p {
+  margin-top: 7px;
+  font-size: 11px;
+}
+.mind-map-footnote {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 23px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 9px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mind-node {
+    transition: none;
+  }
+  .mind-node:hover {
+    transform: none;
+  }
 }
 .save-error,
 .trash-notice {

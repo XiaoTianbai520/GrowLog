@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ClipboardEvent } from 'react';
+import { useEffect, useMemo, useRef, type ClipboardEvent } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
@@ -28,9 +28,22 @@ interface Props {
   importImage: (file?: File) => Promise<string | undefined>;
   report: (e: unknown) => void;
   deleted: boolean;
+  jumpLine?: number;
+  jumpToken?: number;
 }
-export function Editor({ body, mode, attachmentDir, session, importImage, report, deleted }: Props) {
+export function Editor({
+  body,
+  mode,
+  attachmentDir,
+  session,
+  importImage,
+  report,
+  deleted,
+  jumpLine,
+  jumpToken,
+}: Props) {
   const editor = useRef<ReactCodeMirrorRef>(null);
+  const preview = useRef<HTMLElement>(null);
   const extensions = useMemo(
     () => [
       markdown(),
@@ -77,6 +90,36 @@ export function Editor({ body, mode, attachmentDir, session, importImage, report
       void addImage(image);
     }
   };
+  useEffect(() => {
+    if (!jumpLine) return;
+    const frame = requestAnimationFrame(() => {
+      const view = editor.current?.view;
+      if (view && jumpLine <= view.state.doc.lines) {
+        const line = view.state.doc.line(jumpLine);
+        view.dispatch({
+          selection: { anchor: line.from },
+          effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
+        });
+      }
+      const heading = preview.current?.querySelector<HTMLElement>(`[data-source-line="${jumpLine}"]`);
+      heading?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      heading?.animate([{ background: 'var(--selection)' }, { background: 'transparent' }], {
+        duration: 1400,
+        easing: 'ease-out',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [jumpLine, jumpToken, mode]);
+
+  const heading =
+    (Tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') =>
+    ({
+      node,
+      children,
+    }: {
+      node?: { position?: { start?: { line?: number } } };
+      children?: React.ReactNode;
+    }) => <Tag data-source-line={node?.position?.start?.line}>{children}</Tag>;
   return (
     <div className="editor-body">
       {!deleted && mode !== 'read' && (
@@ -155,12 +198,18 @@ export function Editor({ body, mode, attachmentDir, session, importImage, report
         {mode !== 'edit' && (
           <div className="preview-pane">
             <div className="pane-label">{mode === 'read' ? '阅读' : '预览'}</div>
-            <article className="markdown-preview" aria-label="笔记预览">
+            <article ref={preview} className="markdown-preview" aria-label="笔记预览">
               {body.trim() ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   skipHtml
                   components={{
+                    h1: heading('h1'),
+                    h2: heading('h2'),
+                    h3: heading('h3'),
+                    h4: heading('h4'),
+                    h5: heading('h5'),
+                    h6: heading('h6'),
                     img: ({ src, alt }) => {
                       const url = attachmentUrl(src, attachmentDir);
                       return url ? (

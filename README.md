@@ -6,12 +6,13 @@
 
 ## 下载
 
-Windows 10/11 x64 用户可从 [GitHub Releases](https://github.com/XiaoTianbai520/GrowLog/releases) 下载最新版。推荐使用 `GrowLog-0.2.0-Setup.exe`；它包含 WebView2 离线组件，安装后无需配置开发环境。安装器尚未签名，Windows 可能显示发布者或信誉提示。
+Windows 10/11 x64 用户可从 [GitHub Releases](https://github.com/XiaoTianbai520/GrowLog/releases) 下载最新版。推荐使用 `GrowLog-0.2.1-Setup.exe`；它包含 WebView2 离线组件，安装后无需配置开发环境。安装器尚未签名，Windows 可能显示发布者或信誉提示。
 
-## 当前功能（0.2.0）
+## 当前功能（0.2.1）
 
 - Markdown 编辑 / 分栏预览 / 阅读，支持图片粘贴与文件插入。
 - 文件夹、标签、中文搜索、收藏、回收站，800 毫秒自动保存。
+- 文件夹思维导图，按 Markdown 标题层级自动生成，点击节点可定位到笔记原文。
 - 内置笔记里程碑，自定义自动目标、一次完成和累计进度成就。
 - 工作台、成就时间记录、浅色 / 深色 / 跟随系统主题。
 - 每日签到、每日记笔记任务，自动累计经验、等级进度和经验记录。
@@ -20,7 +21,7 @@ Windows 10/11 x64 用户可从 [GitHub Releases](https://github.com/XiaoTianbai5
 
 ## 普通使用
 
-先保存并退出旧版，再运行 Setup，安装后从桌面快捷方式打开，不需要 Node.js、Rust、数据库或任何开发环境。0.1.0 的本机安装、覆盖安装、卸载保留数据及重装已验证；0.2.0 的功能与升级验证见 [更新说明](docs/v0.2.0.md)。
+先保存并退出旧版，再运行 Setup，安装后从桌面快捷方式打开，不需要 Node.js、Rust、数据库或任何开发环境。0.1.0 的本机安装、覆盖安装、卸载保留数据及重装已验证；0.2.1 的新功能见 [更新说明](docs/v0.2.1.md)。
 
 默认程序位置为 `%LOCALAPPDATA%/Programs/枝序/`。程序目录不可使用 EFS 加密目录，否则 NSIS 卸载器可能无法启动；安装器会提前检查并提示重新选择位置，不更改文件夹加密设置。独立的笔记数据目录不受此限制。
 
@@ -99,6 +100,6 @@ npm test
 - `src-tauri/src/backup.rs`：完整备份、校验与恢复。
 - `src-tauri/src/schema.sql`：V1 数据结构；未来更改通过版本迁移追加，不能直接修改旧版本数据库。
 
-未来按真实需求添加 Todo、日程、技能树等模块；不引入插件市场、后台服务或提前抽象的规则引擎。原始长期需求保存在 `docs/00-original-requirements.md`，0.2.0 在 V1 基础上增加了每日任务和等级。
+未来按真实需求添加 Todo、日程、技能树等模块；不引入插件市场、后台服务或提前抽象的规则引擎。原始长期需求保存在 `docs/00-original-requirements.md`，0.2.1 新增了按文件夹自动生成的 Markdown 思维导图。
 
 向 GitHub 提交源码和发布安装包的完整步骤见 [GitHub 提交与发布](docs/github-publish.md)。

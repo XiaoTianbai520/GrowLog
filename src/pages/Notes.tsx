@@ -15,11 +15,14 @@ import {
   Check,
   CloudOff,
   LoaderCircle,
+  ListTree,
+  Network,
 } from 'lucide-react';
 import type { Note, Snapshot } from '../types';
 import type { NoteSession, SaveStatus } from '../lib/note-session';
 import { Editor, type EditorMode } from '../components/Editor';
 import { excerpt, noteTitle, shortDate } from '../lib/format';
+import { MindMap } from '../components/MindMap';
 
 interface Props {
   data: Snapshot;
@@ -60,6 +63,8 @@ export function Notes({
   const [mode, setMode] = useState<EditorMode>('split');
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [folderMenu, setFolderMenu] = useState<string | null>(null);
+  const [folderView, setFolderView] = useState<'list' | 'map'>('list');
+  const [jump, setJump] = useState<{ noteId: string; line: number; token: number } | null>(null);
   const trashView = filter === 'trash';
   const notes = data.notes.filter(
     (note) =>
@@ -129,7 +134,10 @@ export function Notes({
               <div className="folder-row" key={folder.id}>
                 <button
                   className={filter === folder.id ? 'selected' : ''}
-                  onClick={() => setFilter(folder.id)}
+                  onClick={() => {
+                    setFilter(folder.id);
+                    setFolderView('list');
+                  }}
                 >
                   <Folder size={15} />
                   <span className="folder-name">{folder.name}</span>
@@ -181,6 +189,18 @@ export function Notes({
             ))}
           </select>
         </div>
+        {currentFolder && !trashView && (
+          <div className="folder-view-switch segmented" aria-label="文件夹视图">
+            <button className={folderView === 'list' ? 'active' : ''} onClick={() => setFolderView('list')}>
+              <ListTree size={13} />
+              列表
+            </button>
+            <button className={folderView === 'map' ? 'active' : ''} onClick={() => setFolderView('map')}>
+              <Network size={13} />
+              导图
+            </button>
+          </div>
+        )}
         <div className="note-list">
           {notes.map((note) => (
             <button
@@ -215,7 +235,19 @@ export function Notes({
           回收站<span>{data.notes.filter((n) => n.deletedAt).length}</span>
         </button>
       </aside>
-      {draft ? (
+      {currentFolder && folderView === 'map' && !trashView ? (
+        <MindMap
+          folderName={currentFolder.name}
+          notes={data.notes
+            .filter((note) => !note.deletedAt && note.folderId === currentFolder.id)
+            .map((note) => (note.id === draft?.id ? draft : note))}
+          open={(note, line) => {
+            setJump(line ? { noteId: note.id, line, token: Date.now() } : null);
+            setFolderView('list');
+            openNote(note);
+          }}
+        />
+      ) : draft ? (
         <section className="note-document" key={draft.id}>
           <div className="document-toolbar">
             <div className={`save-indicator ${status}`} title={saveError || '内容自动保存在本机'}>
@@ -358,6 +390,8 @@ export function Notes({
             importImage={importImage}
             report={report}
             deleted={Boolean(draft.deletedAt)}
+            jumpLine={jump?.noteId === draft.id ? jump.line : undefined}
+            jumpToken={jump?.noteId === draft.id ? jump.token : undefined}
           />
           <footer className="document-footer">
             <span>本地保存 · 仅你可见</span>
