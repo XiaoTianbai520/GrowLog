@@ -237,6 +237,7 @@ export function Notes({
       </aside>
       {currentFolder && folderView === 'map' && !trashView ? (
         <MindMap
+          folderId={currentFolder.id}
           folderName={currentFolder.name}
           notes={data.notes
             .filter((note) => !note.deletedAt && note.folderId === currentFolder.id)
