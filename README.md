@@ -6,7 +6,7 @@
 
 ## 下载
 
-Windows 10/11 x64 用户可从 [GitHub Releases](https://github.com/XiaoTianbai520/GrowLog/releases) 下载最新版。推荐使用 `枝序-0.2.0-Setup.exe`；它包含 WebView2 离线组件，安装后无需配置开发环境。安装器尚未签名，Windows 可能显示发布者或信誉提示。
+Windows 10/11 x64 用户可从 [GitHub Releases](https://github.com/XiaoTianbai520/GrowLog/releases) 下载最新版。推荐使用 `GrowLog-0.2.0-Setup.exe`；它包含 WebView2 离线组件，安装后无需配置开发环境。安装器尚未签名，Windows 可能显示发布者或信誉提示。
 
 ## 当前功能（0.2.0）
 
