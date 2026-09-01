@@ -14,3 +14,15 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Local build tools and desktop artifacts
+.tools/
+src-tauri/target/
+src-tauri/gen/
+release/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Private development diary requested by the owner
+/开发历程-仅本地.md
