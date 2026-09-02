@@ -154,3 +154,10 @@ pub enum Mutation {
 pub struct ImportedImage {
     pub markdown_path: String,
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedMarkdown {
+    pub title: String,
+    pub body: String,
+}

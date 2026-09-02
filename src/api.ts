@@ -14,6 +14,8 @@ export const api = {
     invoke<{ markdownPath: string }>('import_image_file', { noteId, path }),
   exportBackup: (path: string) => invoke<Snapshot>('export_backup', { path }),
   restoreBackup: (path: string) => invoke<Snapshot>('restore_backup', { path }),
+  exportMarkdown: (path: string, body: string) => invoke<void>('export_markdown', { path, body }),
+  importMarkdown: (path: string) => invoke<{ title: string; body: string }>('import_markdown', { path }),
 };
 export const dialogs = {
   image: () =>
@@ -29,6 +31,21 @@ export const dialogs = {
       title: '导出全部数据',
       defaultPath: `枝序备份-${new Date().toLocaleDateString('sv-SE')}.zhixu`,
       filters: [{ name: '枝序备份', extensions: ['zhixu'] }],
+    }),
+  markdownSource: () =>
+    open({
+      title: '导入 Markdown',
+      multiple: false,
+      filters: [
+        { name: 'Markdown', extensions: ['md', 'markdown'] },
+        { name: '所有文件', extensions: ['*'] },
+      ],
+    }),
+  markdownTarget: (title: string) =>
+    save({
+      title: '导出 Markdown',
+      defaultPath: `${title}.md`,
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
     }),
   confirm: (message: string) =>
     confirm(message, { title: '枝序', kind: 'warning', okLabel: '确认', cancelLabel: '取消' }),

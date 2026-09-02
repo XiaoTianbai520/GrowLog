@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use tauri::Manager;
 mod backup;
 mod growth;
+mod markdown_io;
 mod models;
 mod store;
 #[cfg(test)]
@@ -82,6 +83,25 @@ async fn restore_backup(
     })
     .await
 }
+#[tauri::command]
+async fn export_markdown(path: String, body: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        markdown_io::export_markdown(std::path::Path::new(&path), &body)
+            .map_err(|e| format!("{e:#}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn import_markdown(path: String) -> Result<ImportedMarkdown, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        markdown_io::import_markdown(std::path::Path::new(&path))
+            .map(|(title, body)| ImportedMarkdown { title, body })
+            .map_err(|e| format!("{e:#}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -132,7 +152,9 @@ pub fn run() {
             import_image,
             import_image_file,
             export_backup,
-            restore_backup
+            restore_backup,
+            export_markdown,
+            import_markdown
         ])
         .run(tauri::generate_context!())
         .expect("枝序启动失败");

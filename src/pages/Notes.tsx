@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type DragEvent, type FormEvent } from 'react';
 import {
   Plus,
   Search,
@@ -7,6 +7,8 @@ import {
   Star,
   Trash2,
   FileText,
+  FileUp,
+  FileDown,
   ChevronDown,
   X,
   RotateCcw,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { Note, Snapshot } from '../types';
 import type { NoteSession, SaveStatus } from '../lib/note-session';
+import { isMarkdownFile } from '../lib/markdown-io';
 import { Editor, type EditorMode } from '../components/Editor';
 import { excerpt, noteTitle, shortDate } from '../lib/format';
 import { MindMap } from '../components/MindMap';
@@ -38,6 +41,8 @@ interface Props {
   editFolder: (id?: string) => void;
   deleteFolder: (id: string) => void;
   importImage: (file?: File) => Promise<string | undefined>;
+  importMarkdown: (file?: File) => void;
+  exportMarkdown: (note: Note) => void;
   report: (e: unknown) => void;
 }
 export function Notes({
@@ -54,6 +59,8 @@ export function Notes({
   editFolder,
   deleteFolder,
   importImage,
+  importMarkdown,
+  exportMarkdown,
   report,
 }: Props) {
   const [filter, setFilter] = useState('all');
@@ -65,6 +72,7 @@ export function Notes({
   const [folderMenu, setFolderMenu] = useState<string | null>(null);
   const [folderView, setFolderView] = useState<'list' | 'map'>('list');
   const [jump, setJump] = useState<{ noteId: string; line: number; token: number } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const trashView = filter === 'trash';
   const notes = data.notes.filter(
     (note) =>
@@ -76,6 +84,25 @@ export function Notes({
       `${note.title}\n${note.body}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
   const currentFolder = data.folders.find((f) => f.id === filter);
+  const draggingFiles = (event: DragEvent) => [...event.dataTransfer.types].includes('Files');
+  const dragOverLayout = (event: DragEvent) => {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    // 编辑区有自己的高亮（图片落点提示），覆盖层只在其余区域出现。
+    const overEditor = Boolean((event.target as Element | null)?.closest?.('.source-pane'));
+    setDragOver(!overEditor);
+  };
+  const dragLeaveLayout = (event: DragEvent) => {
+    if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget as Node)) return;
+    setDragOver(false);
+  };
+  const dropOnLayout = (event: DragEvent) => {
+    setDragOver(false);
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    const markdown = [...event.dataTransfer.files].find(isMarkdownFile);
+    if (markdown) importMarkdown(markdown);
+  };
   const addTag = (event: FormEvent) => {
     event.preventDefault();
     const tags = tagInput
@@ -89,18 +116,33 @@ export function Notes({
   };
   const statuses = { saved: '已保存', dirty: '等待保存', saving: '正在保存', error: '保存失败' };
   return (
-    <div className="notes-layout">
+    <div
+      className={`notes-layout ${dragOver ? 'drop-hover' : ''}`}
+      onDragOver={dragOverLayout}
+      onDragLeave={dragLeaveLayout}
+      onDrop={dropOnLayout}
+    >
       <aside className="note-browser">
         <div className="note-browser-title">
           <h2>笔记本</h2>
-          <button
-            className="icon-button"
-            title="新建笔记 Ctrl+N"
-            aria-label="新建笔记"
-            onClick={() => createNote(currentFolder?.id)}
-          >
-            <Plus size={20} />
-          </button>
+          <div className="title-actions">
+            <button
+              className="icon-button"
+              title="导入 Markdown 文件"
+              aria-label="导入 Markdown"
+              onClick={() => importMarkdown()}
+            >
+              <FileUp size={19} />
+            </button>
+            <button
+              className="icon-button"
+              title="新建笔记 Ctrl+N"
+              aria-label="新建笔记"
+              onClick={() => createNote(currentFolder?.id)}
+            >
+              <Plus size={20} />
+            </button>
+          </div>
         </div>
         <label className="search-field">
           <Search size={15} />
@@ -275,6 +317,14 @@ export function Notes({
               </div>
               {!draft.deletedAt && (
                 <>
+                  <button
+                    className="icon-button"
+                    title="导出为 Markdown 文件"
+                    aria-label="导出 Markdown"
+                    onClick={() => exportMarkdown(draft)}
+                  >
+                    <FileDown size={17} />
+                  </button>
                   <button
                     className={`icon-button ${draft.favorite ? 'is-favorite' : ''}`}
                     aria-label={draft.favorite ? '取消收藏' : '收藏笔记'}

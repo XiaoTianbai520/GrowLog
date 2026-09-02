@@ -688,3 +688,31 @@ fn built_in_milestones_are_in_numeric_order() {
         vec![1, 10, 50, 100]
     );
 }
+
+#[test]
+fn exports_and_imports_markdown_files() {
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("学习笔记.md");
+    let body = "# 第一章\n\n- 记录要点\n\n> 引用一句名言\n";
+    super::markdown_io::export_markdown(&path, body).unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), body);
+    let (title, imported) = super::markdown_io::import_markdown(&path).unwrap();
+    assert_eq!(title, "学习笔记");
+    assert_eq!(imported, body);
+}
+
+#[test]
+fn rejects_invalid_markdown_imports() {
+    let temp = TempDir::new().unwrap();
+    let text = temp.path().join("notes.txt");
+    fs::write(&text, "普通文本").unwrap();
+    assert!(super::markdown_io::import_markdown(&text).is_err());
+    let oversized = temp.path().join("oversized.md");
+    fs::write(&oversized, vec![b'a'; 5 * 1024 * 1024 + 1]).unwrap();
+    assert!(super::markdown_io::import_markdown(&oversized).is_err());
+    let missing = temp.path().join("缺失.md");
+    assert!(super::markdown_io::import_markdown(&missing).is_err());
+    let blank = temp.path().join(" .md");
+    fs::write(&blank, "内容").unwrap();
+    assert!(super::markdown_io::import_markdown(&blank).is_err());
+}

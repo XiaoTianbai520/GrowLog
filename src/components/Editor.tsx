@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ClipboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
@@ -44,6 +44,7 @@ export function Editor({
 }: Props) {
   const editor = useRef<ReactCodeMirrorRef>(null);
   const preview = useRef<HTMLElement>(null);
+  const [paneDrag, setPaneDrag] = useState(false);
   const extensions = useMemo(
     () => [
       markdown(),
@@ -81,6 +82,53 @@ export function Editor({
     } catch (e) {
       report(e);
     }
+  };
+  // 拖拽图片释放点即插入点：先落占位符锁定位置，导入完成后原位替换为真实路径。
+  const insertImageAt = async (view: NonNullable<ReactCodeMirrorRef['view']>, pos: number, file: File) => {
+    const marker = `growlog-uploading-${Math.random().toString(36).slice(2)}`;
+    const placeholder = `![图片](${marker})`;
+    const replacePlaceholder = (replacement: string) => {
+      const at = view.state.doc.toString().indexOf(placeholder);
+      if (at < 0) return false;
+      view.dispatch({ changes: { from: at, to: at + placeholder.length, insert: replacement } });
+      return true;
+    };
+    view.dispatch({ changes: { from: pos, insert: placeholder } });
+    view.focus();
+    try {
+      const path = await importImage(file);
+      if (path) {
+        if (!replacePlaceholder(`![图片](${path})`)) report(new Error('图片已导入，但插入位置已被删除'));
+      } else {
+        replacePlaceholder('');
+      }
+    } catch (e) {
+      replacePlaceholder('');
+      report(e);
+    }
+  };
+  const allowFileDrop = (event: DragEvent) => {
+    if (deleted) return;
+    if (![...event.dataTransfer.types].includes('Files')) return;
+    event.preventDefault();
+    setPaneDrag(true);
+  };
+  const leavePane = (event: DragEvent) => {
+    if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget as Node)) return;
+    setPaneDrag(false);
+  };
+  const imageDrop = (event: DragEvent) => {
+    setPaneDrag(false);
+    if (deleted) return;
+    const image = [...event.dataTransfer.files].find((file) => file.type.startsWith('image/'));
+    if (!image) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const view = editor.current?.view;
+    if (!view) return;
+    const coords = view.posAtCoords({ x: event.clientX, y: event.clientY });
+    const pos = coords ?? view.state.doc.length;
+    void insertImageAt(view, pos, image);
   };
   const paste = (event: ClipboardEvent) => {
     if (deleted) return;
@@ -170,8 +218,11 @@ export function Editor({
       <div className={`editor-panes mode-${mode}`}>
         {mode !== 'read' && (
           <div
-            className="source-pane"
+            className={`source-pane ${paneDrag ? 'drag-over' : ''}`}
             onPaste={paste}
+            onDragOver={allowFileDrop}
+            onDragLeave={leavePane}
+            onDrop={imageDrop}
             onCompositionStart={() => session.composition(true)}
             onCompositionEnd={() => session.composition(false)}
           >

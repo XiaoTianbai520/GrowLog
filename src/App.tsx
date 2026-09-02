@@ -18,6 +18,7 @@ import type { Achievement, AchievementInput, Mutation, Note, Route, Snapshot } f
 import { NoteSession } from './lib/note-session';
 import { modules } from './modules';
 import { noteTitle, excerpt } from './lib/format';
+import { MAX_IMPORT_BYTES, safeFileName, titleFromFileName } from './lib/markdown-io';
 import { Modal } from './components/Modal';
 import { Home } from './pages/Home';
 import { DailyTasks } from './pages/DailyTasks';
@@ -125,22 +126,48 @@ export default function App() {
       setRoute('notes');
       setModal(null);
     });
-  const createNote = (folderId?: string) =>
+  const createNoteWith = async (folderId: string | null, title: string, body: string) => {
+    await session.flush();
+    const id = crypto.randomUUID();
+    const fresh = await api.saveNote({
+      id,
+      title,
+      body,
+      folderId,
+      favorite: false,
+      tags: [],
+      revision: 0,
+    });
+    accept(fresh);
+    session.load(fresh.notes.find((n) => n.id === id)!);
+    setRoute('notes');
+  };
+  const createNote = (folderId?: string) => act(() => createNoteWith(folderId || null, '', ''));
+  const importMarkdown = (file?: File) =>
+    act(async () => {
+      let title: string;
+      let body: string;
+      if (file) {
+        if (file.size > MAX_IMPORT_BYTES) throw new Error('Markdown 文件不能超过 5 MB');
+        body = await file.text();
+        title = titleFromFileName(file.name);
+      } else {
+        const path = await dialogs.markdownSource();
+        if (typeof path !== 'string') return;
+        const imported = await api.importMarkdown(path);
+        title = imported.title;
+        body = imported.body;
+      }
+      await createNoteWith(null, title, body);
+      setToast(`已导入「${noteTitle(title)}」`);
+    });
+  const exportMarkdown = (note: Note) =>
     act(async () => {
       await session.flush();
-      const id = crypto.randomUUID();
-      const fresh = await api.saveNote({
-        id,
-        title: '',
-        body: '',
-        folderId: folderId || null,
-        favorite: false,
-        tags: [],
-        revision: 0,
-      });
-      accept(fresh);
-      session.load(fresh.notes.find((n) => n.id === id)!);
-      setRoute('notes');
+      const path = await dialogs.markdownTarget(safeFileName(note.title));
+      if (typeof path !== 'string') return;
+      await api.exportMarkdown(path, note.body);
+      setToast(`已导出「${noteTitle(note.title)}」`);
     });
   const mutate = async (mutation: Mutation) =>
     guarded(async () => {
@@ -455,6 +482,8 @@ export default function App() {
             }
             deleteFolder={deleteFolder}
             importImage={importImage}
+            importMarkdown={importMarkdown}
+            exportMarkdown={exportMarkdown}
             report={report}
           />
         )}
