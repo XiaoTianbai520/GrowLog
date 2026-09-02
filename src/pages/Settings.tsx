@@ -146,7 +146,7 @@ export function SettingsPage({
             <h2>
               枝序 <span>GrowLog</span>
             </h2>
-            <p>版本 0.2.1 · 本地个人工具箱</p>
+            <p>版本 0.2.2 · 本地个人工具箱</p>
             <small>没有账号，没有 AI，没有追踪。记录知识，看见成长。</small>
           </div>
         </section>
