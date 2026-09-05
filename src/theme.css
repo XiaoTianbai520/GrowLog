@@ -51,6 +51,14 @@
   --note-glass-shine: #ffffffd9;
   --note-glass-tint: #c2d3e65c;
   --note-glass-shadow: #536a8510;
+  --glass-surface: #ffffffb8;
+  --glass-rail: #edf2f8b8;
+  --glass-dialog: #f9fbfef2;
+  --glass-blue: #b4cae45c;
+  --glass-sage: #c3d7cc38;
+  --glass-edge: #afc0d45c;
+  --glass-highlight: #ffffffe6;
+  --glass-shadow: 0 8px 28px #405b7b0a, inset 0 1px 0 var(--glass-highlight);
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -105,4 +113,12 @@
   --note-glass-shine: #c0d5f01c;
   --note-glass-tint: #6086b13b;
   --note-glass-shadow: #00000026;
+  --glass-surface: #252e3bbd;
+  --glass-rail: #1a2331c9;
+  --glass-dialog: #222b38f2;
+  --glass-blue: #6088bb30;
+  --glass-sage: #739c891a;
+  --glass-edge: #a2bdd333;
+  --glass-highlight: #d1e3ff24;
+  --glass-shadow: 0 8px 28px #0000001c, inset 0 1px 0 var(--glass-highlight);
 }

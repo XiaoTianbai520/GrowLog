@@ -168,6 +168,9 @@ svg {
   margin-bottom: 12px;
 }
 .app-shell {
+  background:
+    radial-gradient(ellipse at 0 0, var(--glass-blue), transparent 65%),
+    radial-gradient(ellipse at 100% 100%, var(--glass-sage), transparent 60%), var(--bg);
   display: flex;
   height: 100dvh;
   min-width: 760px;
@@ -313,7 +316,7 @@ nav button small {
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg);
+  background: transparent;
 }
 .topbar {
   height: 53px;
@@ -2362,6 +2365,63 @@ progress::-webkit-progress-value {
   }
   to {
     opacity: 1;
+  }
+}
+/* Shared glass framing; opaque backgrounds above remain the fallback. */
+.global-sidebar,
+.topbar,
+.continue-panel,
+.achievement-card,
+.modal,
+.toast {
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+.modal,
+.toast {
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 var(--glass-highlight);
+}
+.global-sidebar nav button.active,
+.settings-nav.active {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 3px 0 0 var(--accent);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .global-sidebar,
+  .topbar {
+    background: linear-gradient(145deg, var(--glass-highlight), transparent 65%), var(--glass-rail);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
+    backdrop-filter: blur(18px) saturate(120%);
+  }
+  .continue-panel,
+  .achievement-card {
+    background: linear-gradient(145deg, var(--glass-blue), transparent 60%), var(--glass-surface);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .modal,
+  .toast {
+    background: linear-gradient(145deg, var(--glass-blue), transparent 50%), var(--glass-dialog);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .global-sidebar,
+  .topbar,
+  .continue-panel,
+  .achievement-card,
+  .modal,
+  .toast,
+  .note-browser,
+  .document-toolbar,
+  .format-toolbar {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 @media (min-width: 1550px) {
