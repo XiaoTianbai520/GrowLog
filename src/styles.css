@@ -1461,7 +1461,7 @@ progress::-webkit-progress-value {
   padding: 12px 24px 0;
   user-select: none;
 }
-.source-pane > .cm-theme {
+.source-pane > .editor-host {
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -2563,8 +2563,13 @@ progress::-webkit-progress-value {
   overflow: visible;
   padding: 0;
   flex: none;
+  white-space: normal;
+  line-height: 1.65;
   cursor: text;
   font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+}
+.live-preview pre {
+  white-space: pre;
 }
 .live-preview p {
   margin-bottom: 0;

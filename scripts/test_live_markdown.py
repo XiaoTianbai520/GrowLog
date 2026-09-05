@@ -120,6 +120,44 @@ with sync_playwright() as playwright:
     page.get_by_role('button', name='导图', exact=True).click()
     page.locator('.heading-node').filter(has_text='标题').click()
     expect(page.locator('.cm-line').filter(has_text='# 标题')).to_be_visible()
+    # Adjacent preview lines must not gain empty source rows or inherited HTML whitespace.
+    page.get_by_role('button', name='源码', exact=True).click()
+    editor.fill('第一行 **粗体**\n第二行 **粗体**\n第三行\n')
+    editor.press('Control+End')
+    page.get_by_role('button', name='原位编辑', exact=True).click()
+    expect(page.locator('.live-preview p').first).to_be_visible()
+    spacing = page.locator('.live-preview p').evaluate_all('''nodes => {
+        const a = nodes[0].getBoundingClientRect(), b = nodes[1].getBoundingClientRect();
+        return {step: b.top - a.top, height: a.height};
+    }''')
+    assert 20 <= spacing['step'] <= 27, spacing
+    assert spacing['step'] <= spacing['height'] + 2, spacing
+    # The editor must own a bounded scroll viewport based on rendered table height.
+    page.get_by_role('button', name='源码', exact=True).click()
+    tall_table = '| A | B |\n| --- | --- |\n' + '| 内容 | 内容 |\n' * 35 + '\n末尾标记\n'
+    editor.fill(tall_table)
+    editor.press('Control+End')
+    page.get_by_role('button', name='原位编辑', exact=True).click()
+    editor.press('Control+End')
+    expect(page.locator('.live-preview table')).to_have_count(1)
+    scroller = page.locator('.cm-scroller')
+    dimensions = scroller.evaluate('''el => ({height: el.clientHeight, total: el.scrollHeight,
+        pane: el.closest('.source-pane').clientHeight,
+        table: el.querySelector('table').getBoundingClientRect().height})''')
+    assert 0 < dimensions['height'] < dimensions['pane'], dimensions
+    assert dimensions['total'] >= dimensions['table'] > dimensions['height'], dimensions
+    scroller.evaluate('el => { el.scrollTop = 0; }')
+    scroller.hover()
+    page.mouse.wheel(0, 500)
+    expect(page.locator('.live-preview table')).to_be_visible()
+    # Web-first polling avoids relying on wheel-event timing.
+    expect(scroller).not_to_have_js_property('scrollTop', 0)
+    editor.press('Control+End')
+    expect(page.locator('.cm-line').last).to_be_in_viewport()
+    page.keyboard.press('Control+s')
+    expect(page.locator('.save-indicator')).to_have_text('已保存')
+    assert next(n for n in page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")['notes'] if n['id'] == note['id'])['body'] == tall_table
+    page.screenshot(path=str(output / 'live-markdown-scroll.png'), animations='disabled')
     # A long document should stay editable and render only the visible widgets.
     page.get_by_role('button', name='源码', exact=True).click()
     page.locator('.cm-content').fill(('## 长笔记\n\n内容 **粗体**\n\n' * 500) + '\n结束')

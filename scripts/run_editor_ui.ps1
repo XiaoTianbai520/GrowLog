@@ -1,6 +1,7 @@
-param([string]$Python = 'python', [switch]$LiveOnly)
+param([string]$Python = 'python', [switch]$LiveOnly, [string]$Executable)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
+if (-not $Executable) { $Executable = Join-Path $workspace 'src-tauri\target\debug\growlog.exe' }
 if (Get-NetTCPConnection -State Listen -LocalPort 9222 -ErrorAction SilentlyContinue) {
     throw 'Port 9222 is already in use; no application was stopped.'
 }
@@ -12,7 +13,7 @@ $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
 $child = $null
 Push-Location -LiteralPath $workspace
 try {
-    $child = Start-Process -FilePath (Join-Path $workspace 'src-tauri\target\debug\growlog.exe') -WindowStyle Hidden -PassThru
+    $child = Start-Process -FilePath $Executable -WindowStyle Hidden -PassThru
     $ready = $false
     for ($attempt = 0; $attempt -lt 60; $attempt++) {
         if ($child.HasExited) { throw 'The isolated test app exited early.' }

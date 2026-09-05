@@ -54,7 +54,11 @@ export function Editor({
       EditorView.lineWrapping,
       EditorView.theme({
         '&': { height: '100%', backgroundColor: 'transparent', fontSize: '14px' },
-        '.cm-scroller': { fontFamily: 'Consolas, "Microsoft YaHei UI", monospace', lineHeight: '1.95' },
+        '.cm-scroller': {
+          fontFamily: 'Consolas, "Microsoft YaHei UI", monospace',
+          lineHeight: mode === 'live' ? '1.65' : '1.95',
+          overflow: 'auto',
+        },
         '.cm-content': { padding: '22px 24px 100px', caretColor: 'var(--accent)' },
         '.cm-line': { padding: '0' },
         '&.cm-focused': { outline: 'none' },
@@ -224,6 +228,7 @@ export function Editor({
               {mode === 'live' ? '当前段可编辑 · 回车后原位预览' : 'Markdown 源码'}
             </div>
             <CodeMirror
+              className="editor-host"
               ref={editor}
               value={body}
               extensions={extensions}
