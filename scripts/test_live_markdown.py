@@ -87,11 +87,11 @@ with sync_playwright() as playwright:
     assert next(n for n in page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")['notes'] if n['id'] == note['id'])['body'] == fixture
     for theme in ['light', 'dark']:
         page.evaluate('(theme) => document.documentElement.dataset.theme = theme', theme)
-        page.screenshot(path=str(output / f'live-markdown-{theme}.png'), full_page=True)
+        page.screenshot(path=str(output / f'live-markdown-{theme}.png'), full_page=True, animations='disabled')
     cdp = browser.contexts[0].new_cdp_session(page)
     cdp.send('Emulation.setDeviceMetricsOverride', {'width': 907, 'height': 640, 'deviceScaleFactor': 1.5, 'mobile': False})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-    page.screenshot(path=str(output / 'live-markdown-narrow.png'), full_page=True)
+    page.screenshot(path=str(output / 'live-markdown-narrow.png'), full_page=True, animations='disabled')
     cdp.send('Emulation.clearDeviceMetricsOverride')
     # A drop lands in the existing source document and loads the managed copy.
     editor = page.locator('.cm-content')
@@ -129,6 +129,6 @@ with sync_playwright() as playwright:
     expect(page.locator('.cm-line').last).to_contain_text('继续输入')
     assert page.locator('.live-preview').count() < 100
     assert errors == [], errors
-    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'click and keyboard source recovery', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'click and keyboard source recovery', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('Live Markdown desktop scenarios passed.')
     browser.close()
