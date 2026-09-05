@@ -25,7 +25,10 @@ with sync_playwright() as playwright:
     page.keyboard.insert_text('**中文粗体**')
     page.keyboard.press('Enter')
     expect(page.locator('.live-preview strong')).to_have_text('中文粗体')
-    page.locator('.live-preview h1').click()
+    heading_preview = page.locator('.live-preview h1')
+    heading_preview.click()
+    expect(heading_preview).to_be_visible()
+    heading_preview.dblclick()
     expect(page.locator('.cm-line').filter(has_text='# 回车标题')).to_be_visible()
     page.keyboard.press('Control+End')
     page.keyboard.press('ArrowUp')
@@ -62,7 +65,8 @@ with sync_playwright() as playwright:
     cdp.send('Input.insertText', {'text': '输入法'})
     page.keyboard.press('Enter')
     expect(page.locator('.live-preview').filter(has_text='输入法')).to_be_visible()
-    # Whole tables and code blocks return to source when clicked.
+    # Whole tables and code blocks stay rendered after one click and return to
+    # source only after a double-click.
     page.get_by_role('button', name='源码', exact=True).click()
     fixture = '# 标题\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```ts\nconst n = 1;\n```\n\n![外部图片](https://example.com/a.png)\n\n结尾\n'
     editor.fill(fixture)
@@ -71,11 +75,17 @@ with sync_playwright() as playwright:
     expect(page.locator('.live-preview table')).to_be_visible()
     expect(page.locator('.live-preview pre')).to_be_visible()
     expect(page.locator('.blocked-image')).to_be_visible()
-    page.locator('.live-preview td').first.click()
+    table_cell = page.locator('.live-preview td').first
+    table_cell.click()
+    expect(page.locator('.live-preview table')).to_be_visible()
+    table_cell.dblclick()
     expect(page.locator('.live-preview table')).to_have_count(0)
     expect(page.locator('.cm-line').filter(has_text='| --- | --- |')).to_be_visible()
     editor.press('Control+End')
-    page.locator('.live-preview pre').click()
+    code_preview = page.locator('.live-preview pre')
+    code_preview.click()
+    expect(code_preview).to_be_visible()
+    code_preview.dblclick()
     expect(page.locator('.cm-line').filter(has_text='const n = 1;')).to_be_visible()
     editor.press('Control+End')
     page.keyboard.press('Control+s')
@@ -167,6 +177,6 @@ with sync_playwright() as playwright:
     expect(page.locator('.cm-line').last).to_contain_text('继续输入')
     assert page.locator('.live-preview').count() < 100
     assert errors == [], errors
-    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'click and keyboard source recovery', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'double-click and keyboard source recovery', 'single-click preview retention', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('Live Markdown desktop scenarios passed.')
     browser.close()

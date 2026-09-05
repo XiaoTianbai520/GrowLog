@@ -34,11 +34,12 @@ export function liveMarkdown(attachmentDir: string, report: (error: unknown) => 
       const observer = new ResizeObserver(() => view.requestMeasure());
       observers.set(dom, observer);
       observer.observe(dom);
-      dom.addEventListener('mousedown', (event) => {
+      dom.addEventListener('dblclick', (event) => {
         if (event.button !== 0) return;
         const element = event.target as HTMLElement;
-        // Modified click opens a link; an ordinary click returns to its source.
-        if (element.closest('a') && (event.ctrlKey || event.metaKey)) return;
+        // Links keep their ordinary preview behavior. Double-click elsewhere on
+        // the rendered line to return to its Markdown source.
+        if (element.closest('a')) return;
         event.preventDefault();
         event.stopPropagation();
         const relativeLine = Number(

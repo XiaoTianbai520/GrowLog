@@ -225,7 +225,7 @@ export function Editor({
             onCompositionEnd={() => session.composition(false)}
           >
             <div className="pane-label">
-              {mode === 'live' ? '当前段可编辑 · 回车后原位预览' : 'Markdown 源码'}
+              {mode === 'live' ? '预览内容 · 双击所在行编辑' : 'Markdown 源码'}
             </div>
             <CodeMirror
               className="editor-host"
