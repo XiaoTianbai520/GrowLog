@@ -67,7 +67,7 @@ export function Notes({
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [tagInput, setTagInput] = useState('');
-  const [mode, setMode] = useState<EditorMode>('split');
+  const [mode, setMode] = useState<EditorMode>('live');
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [folderMenu, setFolderMenu] = useState<string | null>(null);
   const [folderView, setFolderView] = useState<'list' | 'map'>('list');
@@ -305,13 +305,13 @@ export function Notes({
             </div>
             <div className="document-actions">
               <div className="segmented compact" aria-label="编辑模式">
-                {(['edit', 'split', 'read'] as const).map((value) => (
+                {(['live', 'source', 'read'] as const).map((value) => (
                   <button
                     className={mode === value ? 'active' : ''}
                     onClick={() => setMode(value)}
                     key={value}
                   >
-                    {{ edit: '编辑', split: '分栏', read: '阅读' }[value]}
+                    {{ live: '原位编辑', source: '源码', read: '阅读' }[value]}
                   </button>
                 ))}
               </div>

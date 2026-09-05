@@ -1420,9 +1420,6 @@ progress::-webkit-progress-value {
   outline-offset: -8px;
   background: var(--selection);
 }
-.mode-split .preview-pane {
-  border-left: 1px solid var(--line);
-}
 .pane-label {
   flex-shrink: 0;
   color: var(--faint);
@@ -2468,4 +2465,29 @@ progress::-webkit-progress-value {
     animation: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Live widgets share reading typography without nested scrolling or pane padding. */
+.live-preview {
+  display: flow-root;
+  overflow: visible;
+  padding: 0;
+  flex: none;
+  cursor: text;
+  font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+}
+.live-preview p {
+  margin-bottom: 0;
+}
+.live-preview > :first-child {
+  margin-top: 0;
+}
+.live-preview > :last-child {
+  margin-bottom: 0;
+}
+.live-preview img {
+  max-width: 100%;
+}
+.mode-live .cm-line {
+  font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
 }

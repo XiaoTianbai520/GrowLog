@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { markdown } from '@codemirror/lang-markdown';
-import { EditorView } from '@codemirror/view';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { EditorView, keymap } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
+import { markdownEnter } from '../lib/live-markdown';
+import { liveMarkdown } from './live-markdown-extension';
+import { MarkdownContent } from './MarkdownContent';
 import {
   Heading2,
   Bold,
@@ -16,10 +18,9 @@ import {
   Table2,
   ImagePlus,
 } from 'lucide-react';
-import { attachmentUrl, openExternal } from '../api';
 import type { NoteSession } from '../lib/note-session';
 
-export type EditorMode = 'split' | 'edit' | 'read';
+export type EditorMode = 'live' | 'source' | 'read';
 interface Props {
   body: string;
   mode: EditorMode;
@@ -47,7 +48,9 @@ export function Editor({
   const [paneDrag, setPaneDrag] = useState(false);
   const extensions = useMemo(
     () => [
-      markdown(),
+      markdown({ base: markdownLanguage }),
+      Prec.highest(keymap.of([{ key: 'Enter', run: markdownEnter }])),
+      ...(mode === 'live' ? [liveMarkdown(attachmentDir, report)] : []),
       EditorView.lineWrapping,
       EditorView.theme({
         '&': { height: '100%', backgroundColor: 'transparent', fontSize: '14px' },
@@ -62,7 +65,7 @@ export function Editor({
         '.cm-gutters': { display: 'none' },
       }),
     ],
-    [],
+    [mode, attachmentDir, report],
   );
   const insert = (before: string, placeholder: string, after = '') => {
     const view = editor.current?.view;
@@ -159,15 +162,6 @@ export function Editor({
     return () => cancelAnimationFrame(frame);
   }, [jumpLine, jumpToken, mode]);
 
-  const heading =
-    (Tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') =>
-    ({
-      node,
-      children,
-    }: {
-      node?: { position?: { start?: { line?: number } } };
-      children?: React.ReactNode;
-    }) => <Tag data-source-line={node?.position?.start?.line}>{children}</Tag>;
   return (
     <div className="editor-body">
       {!deleted && mode !== 'read' && (
@@ -226,7 +220,9 @@ export function Editor({
             onCompositionStart={() => session.composition(true)}
             onCompositionEnd={() => session.composition(false)}
           >
-            <div className="pane-label">编辑</div>
+            <div className="pane-label">
+              {mode === 'live' ? '当前段可编辑 · 回车后原位预览' : 'Markdown 源码'}
+            </div>
             <CodeMirror
               ref={editor}
               value={body}
@@ -246,44 +242,12 @@ export function Editor({
             />
           </div>
         )}
-        {mode !== 'edit' && (
+        {mode === 'read' && (
           <div className="preview-pane">
-            <div className="pane-label">{mode === 'read' ? '阅读' : '预览'}</div>
+            <div className="pane-label">阅读</div>
             <article ref={preview} className="markdown-preview" aria-label="笔记预览">
               {body.trim() ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  skipHtml
-                  components={{
-                    h1: heading('h1'),
-                    h2: heading('h2'),
-                    h3: heading('h3'),
-                    h4: heading('h4'),
-                    h5: heading('h5'),
-                    h6: heading('h6'),
-                    img: ({ src, alt }) => {
-                      const url = attachmentUrl(src, attachmentDir);
-                      return url ? (
-                        <img src={url} alt={alt || '笔记图片'} loading="lazy" />
-                      ) : (
-                        <span className="blocked-image">图片未加载 · 仅显示已保存到本地的图片</span>
-                      );
-                    },
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (href) void openExternal(href).catch(report);
-                        }}
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                >
-                  {body}
-                </ReactMarkdown>
+                <MarkdownContent body={body} attachmentDir={attachmentDir} report={report} />
               ) : (
                 <p className="preview-placeholder">
                   想法落在纸上，
