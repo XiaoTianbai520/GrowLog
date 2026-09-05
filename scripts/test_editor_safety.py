@@ -12,12 +12,12 @@ with sync_playwright() as p:
     page.keyboard.press('Control+k')
     page.get_by_label('全局搜索').fill('让记录成为日常')
     page.get_by_label('全局搜索').press('Enter')
-    expect(page.get_by_label('笔记标题', exact=True)).to_have_value('让记录成为日常')
+    expect(page.get_by_label('笔记标题', exact=True)).to_have_value('让记录成为日常（已重命名）')
     snapshot = page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")
     root = Path(snapshot['dataDir'])
     assert '.tools' in str(root)
     database = root / 'content/growlog.sqlite'
-    original = next(n for n in snapshot['notes'] if n['title'] == '让记录成为日常')
+    original = next(n for n in snapshot['notes'] if n['title'] == '让记录成为日常（已重命名）')
 
     # Inject a write failure only into the isolated database, then remove it in finally.
     try:

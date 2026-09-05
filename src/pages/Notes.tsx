@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type FormEvent, type MouseEvent } from 'react';
 import {
   Plus,
   Search,
@@ -38,6 +38,8 @@ interface Props {
   trash: (note: Note) => void;
   restore: (note: Note) => void;
   remove: (note: Note) => void;
+  rename: (note: Note) => void;
+  toggleFavorite: (note: Note) => void;
   editFolder: (id?: string) => void;
   deleteFolder: (id: string) => void;
   importImage: (file?: File) => Promise<string | undefined>;
@@ -56,6 +58,8 @@ export function Notes({
   trash,
   restore,
   remove,
+  rename,
+  toggleFavorite,
   editFolder,
   deleteFolder,
   importImage,
@@ -73,6 +77,8 @@ export function Notes({
   const [folderView, setFolderView] = useState<'list' | 'map'>('list');
   const [jump, setJump] = useState<{ noteId: string; line: number; token: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [noteMenu, setNoteMenu] = useState<{ note: Note; x: number; y: number } | null>(null);
+  const noteMenuRef = useRef<HTMLDivElement>(null);
   const trashView = filter === 'trash';
   const notes = data.notes.filter(
     (note) =>
@@ -84,6 +90,7 @@ export function Notes({
       `${note.title}\n${note.body}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
   const currentFolder = data.folders.find((f) => f.id === filter);
+  const visibleNotes = notes.map((note) => (note.id === draft?.id ? draft : note));
   const draggingFiles = (event: DragEvent) => [...event.dataTransfer.types].includes('Files');
   const dragOverLayout = (event: DragEvent) => {
     if (!draggingFiles(event)) return;
@@ -115,6 +122,37 @@ export function Notes({
     }
   };
   const statuses = { saved: '已保存', dirty: '等待保存', saving: '正在保存', error: '保存失败' };
+  useEffect(() => {
+    if (!noteMenu) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!noteMenuRef.current?.contains(event.target as Node)) setNoteMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNoteMenu(null);
+    };
+    const close = () => setNoteMenu(null);
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('scroll', close, true);
+    window.addEventListener('blur', close);
+    requestAnimationFrame(() => noteMenuRef.current?.querySelector<HTMLElement>('button')?.focus());
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('scroll', close, true);
+      window.removeEventListener('blur', close);
+    };
+  }, [noteMenu]);
+  const openNoteMenu = (event: MouseEvent, note: Note) => {
+    event.preventDefault();
+    const width = 184;
+    const height = note.deletedAt ? 92 : 132;
+    setNoteMenu({
+      note,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8)),
+    });
+  };
   return (
     <div
       className={`notes-layout ${dragOver ? 'drop-hover' : ''}`}
@@ -244,11 +282,13 @@ export function Notes({
           </div>
         )}
         <div className="note-list">
-          {notes.map((note) => (
+          {visibleNotes.map((note) => (
             <button
               key={note.id}
               className={`note-list-item ${note.id === draft?.id ? 'active' : ''}`}
               onClick={() => openNote(note)}
+              onContextMenu={(event) => openNoteMenu(event, note)}
+              aria-haspopup="menu"
             >
               <strong>
                 {noteTitle(note.title)}
@@ -277,6 +317,75 @@ export function Notes({
           回收站<span>{data.notes.filter((n) => n.deletedAt).length}</span>
         </button>
       </aside>
+      {noteMenu && (
+        <div
+          className="note-context-menu"
+          role="menu"
+          aria-label={`管理笔记 ${noteTitle(noteMenu.note.title)}`}
+          ref={noteMenuRef}
+          style={{ left: noteMenu.x, top: noteMenu.y }}
+        >
+          {noteMenu.note.deletedAt ? (
+            <>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setNoteMenu(null);
+                  restore(noteMenu.note);
+                }}
+              >
+                <RotateCcw size={14} />
+                恢复
+              </button>
+              <button
+                role="menuitem"
+                className="danger-text"
+                onClick={() => {
+                  setNoteMenu(null);
+                  remove(noteMenu.note);
+                }}
+              >
+                <Trash2 size={14} />
+                永久删除
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setNoteMenu(null);
+                  rename(noteMenu.note);
+                }}
+              >
+                <Pencil size={14} />
+                重命名
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setNoteMenu(null);
+                  toggleFavorite(noteMenu.note);
+                }}
+              >
+                <Star size={14} fill={noteMenu.note.favorite ? 'currentColor' : 'none'} />
+                {noteMenu.note.favorite ? '取消收藏' : '收藏'}
+              </button>
+              <button
+                role="menuitem"
+                className="danger-text"
+                onClick={() => {
+                  setNoteMenu(null);
+                  trash(noteMenu.note);
+                }}
+              >
+                <Trash2 size={14} />
+                移到回收站
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {currentFolder && folderView === 'map' && !trashView ? (
         <MindMap
           folderId={currentFolder.id}

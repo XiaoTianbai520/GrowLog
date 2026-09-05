@@ -30,6 +30,7 @@ type DialogState =
   | { type: 'achievement'; achievement?: Achievement }
   | { type: 'progress'; achievement: Achievement }
   | { type: 'folder'; id?: string; name: string }
+  | { type: 'note'; note: Note }
   | { type: 'search' }
   | null;
 
@@ -180,6 +181,26 @@ export default function App() {
   const change = (mutation: Mutation) => {
     void mutate(mutation).catch(report);
   };
+  const updateNote = (note: Note, patch: Partial<Pick<Note, 'title' | 'favorite'>>) =>
+    guarded(async () => {
+      await session.flush();
+      const latest = await api.bootstrap();
+      const current = latest.notes.find((item) => item.id === note.id);
+      if (!current || current.deletedAt) throw new Error('这篇笔记已被移入回收站');
+      const fresh = await api.saveNote({
+        id: current.id,
+        title: patch.title ?? current.title,
+        body: current.body,
+        folderId: current.folderId,
+        tags: current.tags,
+        favorite: patch.favorite ?? current.favorite,
+        revision: current.revision,
+      });
+      accept(fresh);
+      if (session.getSnapshot().draft?.id === current.id) {
+        session.load(fresh.notes.find((item) => item.id === current.id) || null);
+      }
+    });
 
   const importImage = (file?: File) =>
     guarded(async () => {
@@ -477,6 +498,8 @@ export default function App() {
             trash={(n) => change({ kind: 'trashNote', id: n.id })}
             restore={(n) => change({ kind: 'restoreNote', id: n.id })}
             remove={permanentDelete}
+            rename={(note) => setModal({ type: 'note', note })}
+            toggleFavorite={(note) => void updateNote(note, { favorite: !note.favorite }).catch(report)}
             editFolder={(id) =>
               setModal({ type: 'folder', id, name: data.folders.find((f) => f.id === id)?.name || '' })
             }
@@ -530,6 +553,13 @@ export default function App() {
           submit={async (name) => mutate({ kind: 'saveFolder', id: modal.id, name })}
         />
       )}
+      {modal?.type === 'note' && (
+        <NoteTitleForm
+          name={modal.note.title}
+          close={closeModal}
+          submit={(title) => updateNote(modal.note, { title })}
+        />
+      )}
       {modal?.type === 'search' && <SearchDialog notes={data.notes} close={closeModal} openNote={openNote} />}
       {toast && (
         <div className="toast" role="status">
@@ -543,6 +573,63 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+function NoteTitleForm({
+  name,
+  close,
+  submit,
+}: {
+  name: string;
+  close: () => void;
+  submit: (value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal title="重命名笔记" onClose={close}>
+      <form
+        className="achievement-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const title = value.trim();
+          if (!title) {
+            setError('笔记标题不能为空');
+            return;
+          }
+          setBusy(true);
+          try {
+            await submit(title);
+            close();
+          } catch (err) {
+            setError(errorText(err));
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          笔记标题
+          <input
+            required
+            maxLength={200}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="输入笔记标题"
+          />
+        </label>
+        {error && <p className="form-error">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="secondary-button" onClick={close}>
+            取消
+          </button>
+          <button className="primary-button" disabled={busy}>
+            保存
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
