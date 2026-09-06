@@ -958,6 +958,7 @@ progress::-webkit-progress-value {
   display: flex;
   min-height: 0;
   flex: 1;
+  position: relative;
   background: radial-gradient(ellipse at 0 0, var(--note-glass-tint), transparent 65%), var(--browser-bg);
 }
 .title-actions {
@@ -994,6 +995,41 @@ progress::-webkit-progress-value {
   min-height: 0;
   border-right-color: var(--note-glass-line);
   box-shadow: inset -1px 0 var(--note-glass-shine);
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    width 180ms ease,
+    flex-basis 180ms ease,
+    opacity 120ms ease,
+    visibility 0s linear;
+}
+.notes-layout.browser-collapsed .note-browser {
+  width: 0;
+  flex-basis: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  border-right-width: 0;
+  transition:
+    width 180ms ease,
+    flex-basis 180ms ease,
+    opacity 120ms ease,
+    visibility 0s linear 180ms;
+}
+.note-browser-reveal {
+  position: absolute;
+  z-index: 30;
+  top: 10px;
+  left: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.browser-collapsed .document-toolbar {
+  padding-left: 55px;
+}
+.browser-collapsed .mind-map-header {
+  padding-left: 60px;
 }
 .note-browser-title {
   display: flex;

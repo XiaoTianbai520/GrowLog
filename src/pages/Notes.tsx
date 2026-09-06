@@ -19,6 +19,8 @@ import {
   LoaderCircle,
   ListTree,
   Network,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { Note, Snapshot } from '../types';
 import type { NoteSession, SaveStatus } from '../lib/note-session';
@@ -40,6 +42,8 @@ interface Props {
   remove: (note: Note) => void;
   rename: (note: Note) => void;
   toggleFavorite: (note: Note) => void;
+  browserCollapsed: boolean;
+  toggleBrowser: () => void;
   editFolder: (id?: string) => void;
   deleteFolder: (id: string) => void;
   importImage: (file?: File) => Promise<string | undefined>;
@@ -60,6 +64,8 @@ export function Notes({
   remove,
   rename,
   toggleFavorite,
+  browserCollapsed,
+  toggleBrowser,
   editFolder,
   deleteFolder,
   importImage,
@@ -155,15 +161,23 @@ export function Notes({
   };
   return (
     <div
-      className={`notes-layout ${dragOver ? 'drop-hover' : ''}`}
+      className={`notes-layout ${dragOver ? 'drop-hover' : ''} ${browserCollapsed ? 'browser-collapsed' : ''}`}
       onDragOver={dragOverLayout}
       onDragLeave={dragLeaveLayout}
       onDrop={dropOnLayout}
     >
-      <aside className="note-browser">
+      <aside className="note-browser" aria-hidden={browserCollapsed} inert={browserCollapsed}>
         <div className="note-browser-title">
           <h2>笔记本</h2>
           <div className="title-actions">
+            <button
+              className="icon-button"
+              title="收起笔记列表"
+              aria-label="收起笔记列表"
+              onClick={toggleBrowser}
+            >
+              <PanelLeftClose size={18} />
+            </button>
             <button
               className="icon-button"
               title="导入 Markdown 文件"
@@ -317,6 +331,16 @@ export function Notes({
           回收站<span>{data.notes.filter((n) => n.deletedAt).length}</span>
         </button>
       </aside>
+      {browserCollapsed && (
+        <button
+          className="note-browser-reveal icon-button"
+          title="展开笔记列表"
+          aria-label="展开笔记列表"
+          onClick={toggleBrowser}
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+      )}
       {noteMenu && (
         <div
           className="note-context-menu"

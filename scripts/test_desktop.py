@@ -38,7 +38,14 @@ with sync_playwright() as playwright:
     # Existing test fixtures are not silently cleared. Use a new test data directory.
     assert len(invoke('bootstrap')['notes']) == 0, 'Use a fresh GROWLOG_TEST_DATA_DIR'
     screenshot('01-home-empty.png')
-    page.get_by_role('button', name='写下第一篇').click()
+    page.get_by_role('navigation', name='主导航').get_by_role('button', name='笔记', exact=False).click()
+    expect(page.locator('.document-empty')).to_be_visible()
+    page.get_by_label('收起笔记列表', exact=True).click()
+    expect(page.locator('.note-browser')).not_to_be_visible()
+    expect(page.get_by_label('展开笔记列表', exact=True)).to_be_visible()
+    page.get_by_label('展开笔记列表', exact=True).click()
+    expect(page.locator('.note-browser')).to_be_visible()
+    page.locator('.document-empty').get_by_role('button', name='新建笔记', exact=True).click()
     page.get_by_label('笔记标题', exact=True).fill('让记录成为日常')
     body = '# 让记录成为日常\n\n每个想法，都值得一个安静的位置。\n\n## 今天的小小收获\n\n- 找到一种适合自己的记录方式\n- 给长期目标留一点耐心\n\n> 不必一次做很多，持续记录就是生长。\n\n## 下次继续\n\n- [x] 写下第一篇笔记\n- [ ] 整理今天的学习心得\n\n| 方向 | 下一小步 |\n| --- | --- |\n| 学习 | 读完一章 |\n| 生活 | 留意一个小发现 |'
     page.locator('.cm-content').fill(body)
@@ -191,6 +198,6 @@ with sync_playwright() as playwright:
         screenshot(f'07-dark-scale-{scale}.png')
     cdp.send('Emulation.clearDeviceMetricsOverride')
     assert errors == [], errors
-    (output / 'desktop-test-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'writtenCount': invoke('bootstrap')['writtenCount'], 'scenarios': ['real native IPC', 'Chinese Markdown', 'save before switch', 'folders/tags/favorites', 'note context menu', 'context rename and favorite', 'context trash and restore', 'paste local image', 'remote content blocked', 'manual and automatic achievements', 'search', 'trash/restore', 'backup roundtrip', 'themes', 'scale viewports']}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (output / 'desktop-test-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'writtenCount': invoke('bootstrap')['writtenCount'], 'scenarios': ['real native IPC', 'empty notebook collapse', 'Chinese Markdown', 'save before switch', 'folders/tags/favorites', 'note context menu', 'context rename and favorite', 'context trash and restore', 'paste local image', 'remote content blocked', 'manual and automatic achievements', 'search', 'trash/restore', 'backup roundtrip', 'themes', 'scale viewports']}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('Desktop end-to-end scenarios passed.')
     browser.close()

@@ -38,6 +38,7 @@ export default function App() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [route, setRoute] = useState<Route>('home');
   const [collapsed, setCollapsed] = useState(false);
+  const [noteBrowserCollapsed, setNoteBrowserCollapsed] = useState(false);
   const [modal, setModal] = useState<DialogState>(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -500,6 +501,8 @@ export default function App() {
             remove={permanentDelete}
             rename={(note) => setModal({ type: 'note', note })}
             toggleFavorite={(note) => void updateNote(note, { favorite: !note.favorite }).catch(report)}
+            browserCollapsed={noteBrowserCollapsed}
+            toggleBrowser={() => setNoteBrowserCollapsed((value) => !value)}
             editFolder={(id) =>
               setModal({ type: 'folder', id, name: data.folders.find((f) => f.id === id)?.name || '' })
             }

@@ -128,6 +128,11 @@ with sync_playwright() as playwright:
     expect(page.locator('.save-indicator')).to_have_text('已保存')
     page.locator('.folder-row > button').filter(has_text='原位跳转').click()
     page.get_by_role('button', name='导图', exact=True).click()
+    map_width = page.locator('.mind-map').evaluate('element => element.getBoundingClientRect().width')
+    page.get_by_label('收起笔记列表', exact=True).click()
+    expect(page.locator('.note-browser')).not_to_be_visible()
+    assert page.locator('.mind-map').evaluate('element => element.getBoundingClientRect().width') > map_width
+    page.get_by_label('展开笔记列表', exact=True).click()
     page.locator('.heading-node').filter(has_text='标题').click()
     expect(page.locator('.cm-line').filter(has_text='# 标题')).to_be_visible()
     # Adjacent preview lines must not gain empty source rows or inherited HTML whitespace.
@@ -177,6 +182,6 @@ with sync_playwright() as playwright:
     expect(page.locator('.cm-line').last).to_contain_text('继续输入')
     assert page.locator('.live-preview').count() < 100
     assert errors == [], errors
-    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'double-click and keyboard source recovery', 'single-click preview retention', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'double-click and keyboard source recovery', 'single-click preview retention', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map notebook collapse', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('Live Markdown desktop scenarios passed.')
     browser.close()
