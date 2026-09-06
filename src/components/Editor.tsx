@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { EditorView, keymap } from '@codemirror/view';
@@ -19,6 +27,7 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import type { NoteSession } from '../lib/note-session';
+import { resolveTyporaShortcut, type TyporaShortcutAction } from '../lib/typora-shortcuts';
 
 export type EditorMode = 'live' | 'source' | 'read';
 interface Props {
@@ -88,6 +97,96 @@ export function Editor({
     } catch (e) {
       report(e);
     }
+  };
+  const runSourceShortcut = (action: TyporaShortcutAction) => {
+    const view = editor.current?.view;
+    if (!view) return;
+    const { from, to } = view.state.selection.main;
+    const selected = view.state.sliceDoc(from, to);
+    const wrap = (before: string, placeholder: string, after = '') => insert(before, placeholder, after);
+    const replaceLines = (transform: (line: string) => string) => {
+      const start = view.state.doc.lineAt(from).from;
+      const end = view.state.doc.lineAt(to).to;
+      const replacement = view.state.sliceDoc(start, end).split('\n').map(transform).join('\n');
+      view.dispatch({ changes: { from: start, to: end, insert: replacement } });
+      view.focus();
+    };
+
+    switch (action.kind) {
+      case 'heading':
+        replaceLines((line) => {
+          const plain = line.replace(/^\s{0,3}#{1,6}\s+/, '');
+          return action.level ? `${'#'.repeat(action.level)} ${plain}` : plain;
+        });
+        break;
+      case 'heading-step':
+        replaceLines((line) => {
+          const match = line.match(/^(\s{0,3})(#{1,6})\s+(.*)$/);
+          if (!match) return line;
+          const next = match[2].length + action.delta;
+          return next > 6
+            ? `${match[1]}${match[3]}`
+            : `${match[1]}${'#'.repeat(Math.max(1, next))} ${match[3]}`;
+        });
+        break;
+      case 'bold':
+        wrap('**', '粗体文字', '**');
+        break;
+      case 'italic':
+        wrap('*', '斜体文字', '*');
+        break;
+      case 'strikethrough':
+        wrap('~~', '删除线文字', '~~');
+        break;
+      case 'inline-code':
+        wrap('`', '代码', '`');
+        break;
+      case 'link':
+        wrap('[', '链接文字', '](https://example.com)');
+        break;
+      case 'table':
+        wrap('\n', '| 标题 | 内容 |\n| --- | --- |\n| 项目 | 记录 |', '\n');
+        break;
+      case 'code-block':
+        wrap('\n```\n', '代码', '\n```\n');
+        break;
+      case 'math-block':
+        wrap('\n$$\n', '公式', '\n$$\n');
+        break;
+      case 'quote':
+        replaceLines((line) => `> ${line.replace(/^>\s?/, '')}`);
+        break;
+      case 'ordered-list':
+        replaceLines((line) => `1. ${line.replace(/^\d+\.\s+/, '')}`);
+        break;
+      case 'bullet-list':
+        replaceLines((line) => `- ${line.replace(/^[-+*]\s+/, '')}`);
+        break;
+      case 'image':
+        void addImage();
+        break;
+      case 'clear-format':
+        if (selected) {
+          const plain = selected
+            .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+            .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+            .replace(/(\*\*|__|~~|`)/g, '')
+            .replace(/(^|\s)[*_](?=\S)|(?<=\S)[*_](?=\s|$)/g, '$1');
+          view.dispatch({ changes: { from, to, insert: plain } });
+          view.focus();
+        } else {
+          replaceLines((line) => line.replace(/^\s{0,3}(?:#{1,6}|>|[-+*]|\d+\.)\s+/, ''));
+        }
+        break;
+    }
+  };
+  const sourceShortcut = (event: KeyboardEvent) => {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    const action = resolveTyporaShortcut(event);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    runSourceShortcut(action);
   };
   // 拖拽图片释放点即插入点：先落占位符锁定位置，导入完成后原位替换为真实路径。
   const insertImageAt = async (view: NonNullable<ReactCodeMirrorRef['view']>, pos: number, file: File) => {
@@ -233,6 +332,7 @@ export function Editor({
             onDrop={imageDrop}
             onCompositionStart={() => session.composition(true)}
             onCompositionEnd={() => session.composition(false)}
+            onKeyDownCapture={sourceShortcut}
           >
             <div className="pane-label">Markdown 源码</div>
             <CodeMirror

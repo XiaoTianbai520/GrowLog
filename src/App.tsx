@@ -277,7 +277,7 @@ export default function App() {
   shortcuts.current = { createNote, route, modal };
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.isComposing || event.keyCode === 229) return;
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
       if (event.ctrlKey && event.key.toLowerCase() === 's') {
         event.preventDefault();
         void session.flush().catch(report);

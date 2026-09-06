@@ -1,9 +1,29 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Crepe, CrepeFeature } from '@milkdown/crepe';
+import { imageBlockSchema } from '@milkdown/kit/component/image-block';
+import { toggleLinkCommand } from '@milkdown/kit/component/link-tooltip';
+import { commandsCtx, editorViewCtx } from '@milkdown/kit/core';
+import {
+  addBlockTypeCommand,
+  blockquoteSchema,
+  bulletListSchema,
+  codeBlockSchema,
+  headingSchema,
+  inlineCodeSchema,
+  orderedListSchema,
+  paragraphSchema,
+  setBlockTypeCommand,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleStrongCommand,
+  wrapInBlockTypeCommand,
+} from '@milkdown/kit/preset/commonmark';
+import { createTable, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 import { attachmentUrl } from '../api';
 import type { NoteSession } from '../lib/note-session';
+import { resolveTyporaShortcut, type TyporaShortcutAction } from '../lib/typora-shortcuts';
 
 interface Props {
   body: string;
@@ -37,6 +57,83 @@ export function TyporaEditor({
     if (typeof markdown === 'string' && markdown !== session.getSnapshot().draft?.body) {
       session.edit({ body: markdown });
     }
+  };
+
+  const runShortcut = (action: TyporaShortcutAction) => {
+    const crepe = crepeRef.current;
+    if (!crepe) return;
+    crepe.editor.action((ctx) => {
+      const commands = ctx.get(commandsCtx);
+      const view = ctx.get(editorViewCtx);
+      const setBlock = (nodeType: ReturnType<typeof paragraphSchema.type>, attrs?: Record<string, unknown>) =>
+        commands.call(setBlockTypeCommand.key, { nodeType, attrs });
+
+      switch (action.kind) {
+        case 'heading':
+          if (action.level === 0) setBlock(paragraphSchema.type(ctx));
+          else setBlock(headingSchema.type(ctx), { level: action.level });
+          break;
+        case 'heading-step': {
+          const node = view.state.selection.$from.parent;
+          if (node.type !== headingSchema.type(ctx)) break;
+          const next = Number(node.attrs.level) + action.delta;
+          if (next > 6) setBlock(paragraphSchema.type(ctx));
+          else setBlock(headingSchema.type(ctx), { level: Math.max(1, next) });
+          break;
+        }
+        case 'bold':
+          commands.call(toggleStrongCommand.key);
+          break;
+        case 'italic':
+          commands.call(toggleEmphasisCommand.key);
+          break;
+        case 'strikethrough':
+          commands.call(toggleStrikethroughCommand.key);
+          break;
+        case 'inline-code':
+          if (view.state.selection.empty) {
+            const mark = inlineCodeSchema.type(ctx);
+            const active = view.state.storedMarks?.some((item) => item.type === mark);
+            view.dispatch(active ? view.state.tr.removeStoredMark(mark) : view.state.tr.addStoredMark(mark.create()));
+          } else {
+            commands.call(toggleInlineCodeCommand.key);
+          }
+          break;
+        case 'link':
+          commands.call(toggleLinkCommand.key);
+          break;
+        case 'table':
+          commands.call(addBlockTypeCommand.key, { nodeType: createTable(ctx, 3, 3) });
+          break;
+        case 'code-block':
+          setBlock(codeBlockSchema.type(ctx));
+          break;
+        case 'math-block':
+          setBlock(codeBlockSchema.type(ctx), { language: 'LaTeX' });
+          break;
+        case 'quote':
+          commands.call(wrapInBlockTypeCommand.key, { nodeType: blockquoteSchema.type(ctx) });
+          break;
+        case 'ordered-list':
+          commands.call(wrapInBlockTypeCommand.key, { nodeType: orderedListSchema.type(ctx) });
+          break;
+        case 'bullet-list':
+          commands.call(wrapInBlockTypeCommand.key, { nodeType: bulletListSchema.type(ctx) });
+          break;
+        case 'image':
+          commands.call(addBlockTypeCommand.key, { nodeType: imageBlockSchema.type(ctx) });
+          break;
+        case 'clear-format': {
+          const { from, to } = view.state.selection;
+          const transaction = view.state.tr.removeMark(from, to);
+          if (view.state.storedMarks?.length) transaction.setStoredMarks([]);
+          view.dispatch(transaction);
+          setBlock(paragraphSchema.type(ctx));
+          break;
+        }
+      }
+      view.focus();
+    });
   };
 
   useEffect(() => {
@@ -142,8 +239,14 @@ export function TyporaEditor({
     });
   }, [body, jumpLine, jumpToken, ready]);
 
-  const syncBeforeShortcut = (event: KeyboardEvent) => {
+  const handleShortcut = (event: KeyboardEvent) => {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
     if (event.ctrlKey && ['s', 'n'].includes(event.key.toLowerCase())) syncMarkdown();
+    const action = resolveTyporaShortcut(event);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    runShortcut(action);
   };
 
   return (
@@ -155,7 +258,7 @@ export function TyporaEditor({
         session.composition(false);
         queueMicrotask(syncMarkdown);
       }}
-      onKeyDownCapture={syncBeforeShortcut}
+      onKeyDownCapture={handleShortcut}
     >
       {!ready && <span className="typora-loading">正在准备编辑器…</span>}
       <div ref={host} />
