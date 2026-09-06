@@ -48,9 +48,12 @@ with sync_playwright() as playwright:
     page.locator('.document-empty').get_by_role('button', name='新建笔记', exact=True).click()
     page.get_by_label('笔记标题', exact=True).fill('让记录成为日常')
     body = '# 让记录成为日常\n\n每个想法，都值得一个安静的位置。\n\n## 今天的小小收获\n\n- 找到一种适合自己的记录方式\n- 给长期目标留一点耐心\n\n> 不必一次做很多，持续记录就是生长。\n\n## 下次继续\n\n- [x] 写下第一篇笔记\n- [ ] 整理今天的学习心得\n\n| 方向 | 下一小步 |\n| --- | --- |\n| 学习 | 读完一章 |\n| 生活 | 留意一个小发现 |'
+    page.get_by_role('button', name='源码', exact=True).click()
     page.locator('.cm-content').fill(body)
     save()
-    expect(page.locator('.live-preview').get_by_role('heading', name='今天的小小收获')).to_be_visible()
+    page.get_by_role('button', name='编辑', exact=True).click()
+    expect(page.locator('.typora-editor-shell').get_by_role('heading', name='今天的小小收获')).to_be_visible()
+    page.get_by_role('button', name='源码', exact=True).click()
     data = invoke('bootstrap')
     first_id = data['notes'][0]['id']
     assert data['writtenCount'] == 1
@@ -123,15 +126,16 @@ with sync_playwright() as playwright:
     }''', png)
     expect(page.locator('.cm-content')).to_contain_text('attachments/', timeout=10000)
     save()
-    page.locator('.cm-content').press('Control+End')
-    page.keyboard.press('Enter')
+    page.get_by_role('button', name='阅读', exact=True).click()
     expect(page.locator('.markdown-preview img').first).to_have_js_property('naturalWidth', 1)
     assert len(list(Path(invoke('bootstrap')['attachmentDir']).glob('*.png'))) == 1
 
     # Remote images and raw HTML never execute or load automatically.
+    page.get_by_role('button', name='源码', exact=True).click()
     page.locator('.cm-content').press('Control+End')
     page.keyboard.insert_text('\n\n![外部](https://example.com/test.png)\n\n<script>window.bad=true</script>')
     save()
+    page.get_by_role('button', name='阅读', exact=True).click()
     expect(page.get_by_text('图片未加载 · 仅显示已保存到本地的图片')).to_be_visible()
     assert page.evaluate('window.bad === undefined')
 
@@ -175,6 +179,7 @@ with sync_playwright() as playwright:
     backup = str(output / 'desktop-roundtrip.zhixu')
     invoke('export_backup', {'path': backup})
     original_body = invoke('bootstrap')['notes'][0]['body']
+    page.get_by_role('button', name='源码', exact=True).click()
     page.locator('.cm-content').fill('恢复测试期间的临时内容')
     save()
     invoke('restore_backup', {'path': backup})

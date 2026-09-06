@@ -23,6 +23,7 @@ with sync_playwright() as p:
     try:
         with sqlite3.connect(database) as db:
             db.execute("CREATE TRIGGER qa_write_failure BEFORE UPDATE ON notes BEGIN SELECT RAISE(ABORT,'test disk write failure'); END;")
+        page.get_by_role('button', name='源码', exact=True).click()
         page.locator('.cm-content').fill('保存失败时，必须留住我的草稿。')
         expect(page.locator('.save-indicator')).to_have_text('保存失败', timeout=10000)
         page.get_by_role('navigation', name='主导航').get_by_role('button', name='工作台', exact=True).click()
@@ -50,7 +51,8 @@ with sync_playwright() as p:
     expect(page.locator('.source-pane')).to_have_count(0)
     page.get_by_role('button', name='源码', exact=True).click()
     expect(page.locator('.preview-pane')).to_have_count(0)
-    page.get_by_role('button', name='原位编辑', exact=True).click()
+    page.get_by_role('button', name='编辑', exact=True).click()
+    expect(page.locator('.typora-editor-shell .ProseMirror')).to_be_visible()
     browser_width = page.locator('.note-browser').evaluate('element => element.getBoundingClientRect().width')
     document_width = page.locator('.note-document').evaluate('element => element.getBoundingClientRect().width')
     page.get_by_label('收起笔记列表', exact=True).click()

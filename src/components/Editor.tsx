@@ -4,8 +4,8 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { EditorView, keymap } from '@codemirror/view';
 import { Prec } from '@codemirror/state';
 import { markdownEnter } from '../lib/live-markdown';
-import { liveMarkdown } from './live-markdown-extension';
 import { MarkdownContent } from './MarkdownContent';
+import { TyporaEditor } from './TyporaEditor';
 import {
   Heading2,
   Bold,
@@ -50,13 +50,12 @@ export function Editor({
     () => [
       markdown({ base: markdownLanguage }),
       Prec.highest(keymap.of([{ key: 'Enter', run: markdownEnter }])),
-      ...(mode === 'live' ? [liveMarkdown(attachmentDir, report)] : []),
       EditorView.lineWrapping,
       EditorView.theme({
         '&': { height: '100%', backgroundColor: 'transparent', fontSize: '14px' },
         '.cm-scroller': {
           fontFamily: 'Consolas, "Microsoft YaHei UI", monospace',
-          lineHeight: mode === 'live' ? '1.65' : '1.95',
+          lineHeight: '1.95',
           overflow: 'auto',
         },
         '.cm-content': { padding: '22px 24px 100px', caretColor: 'var(--accent)' },
@@ -168,7 +167,7 @@ export function Editor({
 
   return (
     <div className="editor-body">
-      {!deleted && mode !== 'read' && (
+      {!deleted && mode === 'source' && (
         <div className="format-toolbar" aria-label="Markdown 工具栏">
           <button title="标题" aria-label="插入标题" onClick={() => insert('## ', '标题')}>
             <Heading2 size={17} />
@@ -214,7 +213,18 @@ export function Editor({
         </div>
       )}
       <div className={`editor-panes mode-${mode}`}>
-        {mode !== 'read' && (
+        {mode === 'live' && (
+          <TyporaEditor
+            body={body}
+            attachmentDir={attachmentDir}
+            session={session}
+            importImage={importImage}
+            report={report}
+            jumpLine={jumpLine}
+            jumpToken={jumpToken}
+          />
+        )}
+        {mode === 'source' && (
           <div
             className={`source-pane ${paneDrag ? 'drag-over' : ''}`}
             onPaste={paste}
@@ -224,9 +234,7 @@ export function Editor({
             onCompositionStart={() => session.composition(true)}
             onCompositionEnd={() => session.composition(false)}
           >
-            <div className="pane-label">
-              {mode === 'live' ? '预览内容 · 双击所在行编辑' : 'Markdown 源码'}
-            </div>
+            <div className="pane-label">Markdown 源码</div>
             <CodeMirror
               className="editor-host"
               ref={editor}

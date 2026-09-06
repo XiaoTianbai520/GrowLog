@@ -444,7 +444,7 @@ export function Notes({
                     onClick={() => setMode(value)}
                     key={value}
                   >
-                    {{ live: '原位编辑', source: '源码', read: '阅读' }[value]}
+                    {{ live: '编辑', source: '源码', read: '阅读' }[value]}
                   </button>
                 ))}
               </div>

@@ -1,187 +1,140 @@
-"""Live Markdown interactions in a real Tauri WebView with an isolated database."""
+"""Typora-style Markdown editing in a real Tauri WebView with isolated data."""
 import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 output = Path('test-results').resolve()
 output.mkdir(exist_ok=True)
+
 with sync_playwright() as playwright:
     browser = playwright.chromium.connect_over_cdp('http://127.0.0.1:9222')
     page = browser.contexts[0].pages[0]
     page.wait_for_load_state('networkidle')
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
-    page.get_by_role('navigation', name='主导航').get_by_role('button', name='笔记').click()
+
+    page.get_by_role('navigation', name='主导航').get_by_role('button', name='笔记', exact=False).click()
     page.get_by_label('新建笔记', exact=True).click()
-    expect(page.get_by_label('笔记标题', exact=True)).to_have_value('')
-    page.get_by_label('笔记标题', exact=True).fill('原位编辑回归')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    editor = page.locator('.cm-content')
+    page.get_by_label('笔记标题', exact=True).fill('所见即所得回归')
+    editor = page.locator('.typora-editor-shell .ProseMirror')
+    expect(editor).to_be_visible(timeout=15000)
+    expect(page.get_by_label('Markdown 所见即所得编辑器')).to_be_visible()
+
+    # Markdown input rules immediately become editable document structure.
     editor.click()
-    page.keyboard.insert_text('# 回车标题')
-    expect(page.locator('.live-preview h1')).to_have_count(0)
+    page.keyboard.type('# ')
+    page.keyboard.insert_text('即时标题')
+    expect(editor.locator('h1')).to_have_text('即时标题')
+    expect(editor).not_to_contain_text('# 即时标题')
     page.keyboard.press('Enter')
-    expect(page.locator('.live-preview h1')).to_have_text('回车标题')
-    page.keyboard.insert_text('**中文粗体**')
+    page.keyboard.insert_text('普通段落 ')
+    page.keyboard.press('Control+b')
+    page.keyboard.insert_text('中文粗体')
+    page.keyboard.press('Control+b')
+    expect(editor.locator('strong')).to_have_text('中文粗体')
     page.keyboard.press('Enter')
-    expect(page.locator('.live-preview strong')).to_have_text('中文粗体')
-    heading_preview = page.locator('.live-preview h1')
-    heading_preview.click()
-    expect(heading_preview).to_be_visible()
-    heading_preview.dblclick()
-    expect(page.locator('.cm-line').filter(has_text='# 回车标题')).to_be_visible()
-    page.keyboard.press('Control+End')
-    page.keyboard.press('ArrowUp')
-    expect(page.locator('.cm-line').filter(has_text='**中文粗体**')).to_be_visible()
-    page.keyboard.press('Control+End')
-    page.keyboard.insert_text('- 项目')
-    page.keyboard.press('Enter')
-    expect(page.locator('.cm-line').last).to_have_text('- ')
-    page.keyboard.press('Enter')
-    page.keyboard.insert_text('最后一行')
-    page.keyboard.press('Control+z')
-    page.keyboard.press('Control+y')
-    expect(page.locator('.cm-line').last).to_have_text('最后一行')
-    page.keyboard.press('Control+a')
-    expect(page.locator('.live-preview')).to_have_count(0)
-    original = editor.inner_text()
-    page.keyboard.press('ArrowRight')
+    page.keyboard.type('- ')
+    page.keyboard.insert_text('列表项目')
+    expect(editor.locator('li')).to_contain_text('列表项目')
+
+    # Ctrl+S synchronizes the structured document before the app flushes it.
     page.keyboard.press('Control+s')
-    expect(page.locator('.save-indicator')).to_have_text('已保存')
+    expect(page.locator('.save-indicator')).to_have_text('已保存', timeout=10000)
     snapshot = page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")
-    note = next(note for note in snapshot['notes'] if note['title'] == '原位编辑回归')
-    assert note['body'] == original, (note['body'], original)
+    note = next(note for note in snapshot['notes'] if note['title'] == '所见即所得回归')
+    assert '# 即时标题' in note['body'], note['body']
+    assert '**中文粗体**' in note['body'], note['body']
+
+    # Source mode remains an exact Markdown escape hatch; returning creates
+    # graphical tables, code blocks, math and formatted text in one editor.
     page.get_by_role('button', name='源码', exact=True).click()
-    expect(page.locator('.live-preview')).to_have_count(0)
-    expect(editor).to_have_text(original, use_inner_text=True)
+    source = page.locator('.cm-content')
+    expect(source).to_contain_text('# 即时标题')
+    fixture = '''# 图形化内容
+
+这是 **粗体**、*斜体* 与 `代码`。
+
+| 方向 | 下一步 |
+| --- | --- |
+| 学习 | 读一章 |
+
+- [ ] 可点击任务
+
+```ts
+const n = 1;
+```
+
+$$
+x^2 + y^2
+$$
+'''
+    source.fill(fixture)
+    page.get_by_role('button', name='编辑', exact=True).click()
+    editor = page.locator('.typora-editor-shell .ProseMirror')
+    expect(editor.locator('h1')).to_have_text('图形化内容')
+    expect(editor.locator('strong')).to_have_text('粗体')
+    expect(editor.locator('em')).to_have_text('斜体')
+    expect(editor.get_by_role('table')).to_be_visible()
+    expect(editor.locator('.milkdown-code-block').first).to_contain_text('const n = 1;')
+    expect(page.locator('.typora-editor-shell')).not_to_contain_text('| --- | --- |')
+    task = editor.locator('li').filter(has_text='可点击任务')
+    expect(task).to_be_visible()
+    expect(task.locator('.label')).to_have_class('milkdown-icon label unchecked')
+    task.locator('.label-wrapper').click()
+    expect(task.locator('.label')).to_have_class('milkdown-icon label checked')
+
+    # Clicking rendered content places the caret directly without revealing a
+    # raw Markdown line or replacing the surrounding document.
+    paragraph = editor.locator('p').filter(has_text='这是').first
+    paragraph.click()
+    page.keyboard.press('End')
+    page.keyboard.insert_text(' 单击后继续写')
+    expect(paragraph).to_contain_text('单击后继续写')
+    expect(editor.get_by_role('table')).to_be_visible()
+
+    # Paste a real image; the editor stores only the managed relative path and
+    # renders the local asset URL without embedding external data.
+    editor.click()
+    page.keyboard.press('Control+End')
+    png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='
+    editor.evaluate('''(element, base64) => {
+        const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const data = new DataTransfer();
+        data.items.add(new File([bytes], 'typora.png', {type: 'image/png'}));
+        element.dispatchEvent(new ClipboardEvent('paste', {clipboardData: data, bubbles: true, cancelable: true}));
+    }''', png)
+    expect(editor.locator('img').last).to_have_js_property('naturalWidth', 1, timeout=10000)
+    page.wait_for_timeout(1200)
+    expect(page.locator('.save-indicator')).to_have_text('已保存', timeout=10000)
+    saved = next(n for n in page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")['notes'] if n['id'] == note['id'])
+    assert 'attachments/' in saved['body'] and 'data:image' not in saved['body'], saved['body']
+    assert '[x] 可点击任务' in saved['body'], saved['body']
+
     page.get_by_role('button', name='阅读', exact=True).click()
-    expect(page.get_by_label('笔记预览').locator('h1')).to_have_text('回车标题')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    # Exercise an actual IME composition path through Chromium's input protocol.
-    editor.press('Control+End')
-    page.keyboard.press('Enter')
-    cdp = browser.contexts[0].new_cdp_session(page)
-    cdp.send('Input.imeSetComposition', {'text': '输入法', 'selectionStart': 3, 'selectionEnd': 3})
-    cdp.send('Input.insertText', {'text': '输入法'})
-    page.keyboard.press('Enter')
-    expect(page.locator('.live-preview').filter(has_text='输入法')).to_be_visible()
-    # Whole tables and code blocks stay rendered after one click and return to
-    # source only after a double-click.
-    page.get_by_role('button', name='源码', exact=True).click()
-    fixture = '# 标题\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```ts\nconst n = 1;\n```\n\n![外部图片](https://example.com/a.png)\n\n结尾\n'
-    editor.fill(fixture)
-    editor.press('Control+End')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    expect(page.locator('.live-preview table')).to_be_visible()
-    expect(page.locator('.live-preview pre')).to_be_visible()
-    expect(page.locator('.blocked-image')).to_be_visible()
-    table_cell = page.locator('.live-preview td').first
-    table_cell.click()
-    expect(page.locator('.live-preview table')).to_be_visible()
-    table_cell.dblclick()
-    expect(page.locator('.live-preview table')).to_have_count(0)
-    expect(page.locator('.cm-line').filter(has_text='| --- | --- |')).to_be_visible()
-    editor.press('Control+End')
-    code_preview = page.locator('.live-preview pre')
-    code_preview.click()
-    expect(code_preview).to_be_visible()
-    code_preview.dblclick()
-    expect(page.locator('.cm-line').filter(has_text='const n = 1;')).to_be_visible()
-    editor.press('Control+End')
-    page.keyboard.press('Control+s')
-    expect(page.locator('.save-indicator')).to_have_text('已保存')
-    page.reload()
-    page.wait_for_load_state('networkidle')
-    page.get_by_role('navigation', name='主导航').get_by_role('button', name='笔记').click()
-    page.locator('.note-list-item').filter(has_text='原位编辑回归').click()
-    assert next(n for n in page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")['notes'] if n['id'] == note['id'])['body'] == fixture
+    expect(page.get_by_label('笔记预览').locator('table')).to_be_visible()
+    expect(page.get_by_label('笔记预览').locator('img')).to_have_js_property('naturalWidth', 1)
+    page.get_by_role('button', name='编辑', exact=True).click()
+    editor = page.locator('.typora-editor-shell .ProseMirror')
+    expect(editor).to_be_visible()
+
     for theme in ['light', 'dark']:
         page.evaluate('(theme) => document.documentElement.dataset.theme = theme', theme)
-        page.screenshot(path=str(output / f'live-markdown-{theme}.png'), full_page=True, animations='disabled')
+        page.screenshot(path=str(output / f'typora-editor-{theme}.png'), full_page=True, animations='disabled')
+
     cdp = browser.contexts[0].new_cdp_session(page)
     cdp.send('Emulation.setDeviceMetricsOverride', {'width': 907, 'height': 640, 'deviceScaleFactor': 1.5, 'mobile': False})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-    page.screenshot(path=str(output / 'live-markdown-narrow.png'), full_page=True, animations='disabled')
+    page.screenshot(path=str(output / 'typora-editor-narrow.png'), full_page=True, animations='disabled')
     cdp.send('Emulation.clearDeviceMetricsOverride')
-    # A drop lands in the existing source document and loads the managed copy.
-    editor = page.locator('.cm-content')
-    editor.press('Control+End')
-    editor.evaluate('''element => {
-        const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='), c => c.charCodeAt(0));
-        const data = new DataTransfer();
-        data.items.add(new File([bytes], 'drop.png', {type: 'image/png'}));
-        const rect = element.getBoundingClientRect();
-        element.dispatchEvent(new DragEvent('drop', {dataTransfer: data, bubbles: true, cancelable: true, clientX: rect.left + 20, clientY: rect.bottom - 20}));
-    }''')
-    page.get_by_role('button', name='源码', exact=True).click()
-    expect(editor).to_contain_text('attachments/')
-    editor.press('Control+End')
-    page.keyboard.press('Enter')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    expect(page.locator('.live-preview img').first).to_have_js_property('naturalWidth', 1)
-    page.get_by_label('新建文件夹', exact=True).click()
-    page.get_by_label('文件夹名称', exact=True).fill('原位跳转')
-    page.get_by_role('dialog').get_by_role('button', name='创建文件夹', exact=True).click()
-    expect(page.get_by_role('dialog')).to_have_count(0)
-    page.get_by_label('所属文件夹').select_option(label='原位跳转')
-    page.keyboard.press('Control+s')
-    expect(page.locator('.save-indicator')).to_have_text('已保存')
-    page.locator('.folder-row > button').filter(has_text='原位跳转').click()
-    page.get_by_role('button', name='导图', exact=True).click()
-    map_width = page.locator('.mind-map').evaluate('element => element.getBoundingClientRect().width')
-    page.get_by_label('收起笔记列表', exact=True).click()
-    expect(page.locator('.note-browser')).not_to_be_visible()
-    assert page.locator('.mind-map').evaluate('element => element.getBoundingClientRect().width') > map_width
-    page.get_by_label('展开笔记列表', exact=True).click()
-    page.locator('.heading-node').filter(has_text='标题').click()
-    expect(page.locator('.cm-line').filter(has_text='# 标题')).to_be_visible()
-    # Adjacent preview lines must not gain empty source rows or inherited HTML whitespace.
-    page.get_by_role('button', name='源码', exact=True).click()
-    editor.fill('第一行 **粗体**\n第二行 **粗体**\n第三行\n')
-    editor.press('Control+End')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    expect(page.locator('.live-preview p').first).to_be_visible()
-    spacing = page.locator('.live-preview p').evaluate_all('''nodes => {
-        const a = nodes[0].getBoundingClientRect(), b = nodes[1].getBoundingClientRect();
-        return {step: b.top - a.top, height: a.height};
-    }''')
-    assert 20 <= spacing['step'] <= 27, spacing
-    assert spacing['step'] <= spacing['height'] + 2, spacing
-    # The editor must own a bounded scroll viewport based on rendered table height.
-    page.get_by_role('button', name='源码', exact=True).click()
-    tall_table = '| A | B |\n| --- | --- |\n' + '| 内容 | 内容 |\n' * 35 + '\n末尾标记\n'
-    editor.fill(tall_table)
-    editor.press('Control+End')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    editor.press('Control+End')
-    expect(page.locator('.live-preview table')).to_have_count(1)
-    scroller = page.locator('.cm-scroller')
-    dimensions = scroller.evaluate('''el => ({height: el.clientHeight, total: el.scrollHeight,
-        pane: el.closest('.source-pane').clientHeight,
-        table: el.querySelector('table').getBoundingClientRect().height})''')
-    assert 0 < dimensions['height'] < dimensions['pane'], dimensions
-    assert dimensions['total'] >= dimensions['table'] > dimensions['height'], dimensions
-    scroller.evaluate('el => { el.scrollTop = 0; }')
-    scroller.hover()
-    page.mouse.wheel(0, 500)
-    expect(page.locator('.live-preview table')).to_be_visible()
-    # Web-first polling avoids relying on wheel-event timing.
-    expect(scroller).not_to_have_js_property('scrollTop', 0)
-    editor.press('Control+End')
-    expect(page.locator('.cm-line').last).to_be_in_viewport()
-    page.keyboard.press('Control+s')
-    expect(page.locator('.save-indicator')).to_have_text('已保存')
-    assert next(n for n in page.evaluate("window.__TAURI_INTERNALS__.invoke('bootstrap')")['notes'] if n['id'] == note['id'])['body'] == tall_table
-    page.screenshot(path=str(output / 'live-markdown-scroll.png'), animations='disabled')
-    # A long document should stay editable and render only the visible widgets.
-    page.get_by_role('button', name='源码', exact=True).click()
-    page.locator('.cm-content').fill(('## 长笔记\n\n内容 **粗体**\n\n' * 500) + '\n结束')
-    page.get_by_role('button', name='原位编辑', exact=True).click()
-    page.locator('.cm-content').press('Control+End')
-    page.keyboard.insert_text('继续输入')
-    expect(page.locator('.cm-line').last).to_contain_text('继续输入')
-    assert page.locator('.live-preview').count() < 100
     assert errors == [], errors
-    (output / 'live-markdown-report.json').write_text(json.dumps({'result': 'passed', 'pageErrors': errors, 'scenarios': ['Enter preview', 'double-click and keyboard source recovery', 'single-click preview retention', 'selection', 'undo redo', 'source preservation', 'three modes', 'IME', 'tables and code', 'blocked remote images', 'reload', 'themes', 'narrow viewport', 'image drop', 'mind map notebook collapse', 'mind map jump', 'long document']}, ensure_ascii=False, indent=2), encoding='utf-8')
-    print('Live Markdown desktop scenarios passed.')
+    (output / 'live-markdown-report.json').write_text(json.dumps({
+        'result': 'passed',
+        'pageErrors': errors,
+        'scenarios': [
+            'single-surface editing', 'Markdown input rules', 'inline formatting', 'clickable task',
+            'source roundtrip', 'graphical table', 'code and math blocks', 'click-to-edit',
+            'managed image paste', 'reading mode', 'themes', 'narrow viewport'
+        ]
+    }, ensure_ascii=False, indent=2), encoding='utf-8')
+    print('Typora-style desktop editor scenarios passed.')
     browser.close()

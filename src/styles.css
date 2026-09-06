@@ -1542,6 +1542,102 @@ progress::-webkit-progress-value {
 .cm-placeholder {
   color: var(--faint) !important;
 }
+.typora-editor-shell {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--source);
+}
+.typora-editor-shell > div,
+.typora-editor-shell .milkdown {
+  min-height: 100%;
+}
+.typora-editor-shell .milkdown {
+  --crepe-color-background: var(--source);
+  --crepe-color-on-background: var(--text);
+  --crepe-color-surface: var(--note-glass-toolbar);
+  --crepe-color-surface-low: var(--soft);
+  --crepe-color-on-surface: var(--text);
+  --crepe-color-on-surface-variant: var(--muted);
+  --crepe-color-outline: var(--faint);
+  --crepe-color-primary: var(--accent-text);
+  --crepe-color-secondary: var(--selection);
+  --crepe-color-on-secondary: var(--text);
+  --crepe-color-inverse: var(--surface);
+  --crepe-color-on-inverse: var(--text);
+  --crepe-color-inline-code: var(--danger);
+  --crepe-color-error: var(--danger);
+  --crepe-color-hover: var(--hover);
+  --crepe-color-selected: var(--selection);
+  --crepe-color-inline-area: var(--soft);
+  --crepe-base-font-size: 15px;
+  --crepe-font-title: 'Microsoft YaHei UI', 'Noto Sans SC', sans-serif;
+  --crepe-font-default: 'Microsoft YaHei UI', 'Noto Sans SC', sans-serif;
+  --crepe-font-code: Consolas, 'Microsoft YaHei UI', monospace;
+  color: var(--text);
+  background: var(--source);
+}
+.typora-editor-shell .milkdown-top-bar {
+  top: 0;
+  min-height: 43px;
+  border-color: var(--note-glass-line);
+  background: var(--note-glass-toolbar);
+  box-shadow:
+    inset 0 1px var(--note-glass-shine),
+    0 3px 10px var(--note-glass-shadow);
+}
+.typora-editor-shell .ProseMirror {
+  min-height: calc(100% - 43px);
+  padding: 34px max(34px, calc((100% - 820px) / 2)) 120px;
+  line-height: 1.85;
+  caret-color: var(--accent);
+}
+.typora-editor-shell .ProseMirror h1 {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.85em;
+}
+.typora-editor-shell .ProseMirror h2 {
+  font-size: 1.55em;
+}
+.typora-editor-shell .ProseMirror h3 {
+  font-size: 1.3em;
+}
+.typora-editor-shell .ProseMirror h1,
+.typora-editor-shell .ProseMirror h2,
+.typora-editor-shell .ProseMirror h3 {
+  font-weight: 650;
+}
+.typora-editor-shell .ProseMirror p {
+  line-height: 1.85;
+  padding: 5px 0;
+}
+.typora-editor-shell .ProseMirror blockquote {
+  padding: 8px 15px;
+  background: var(--soft);
+  color: var(--muted);
+}
+.typora-editor-shell .ProseMirror blockquote::before {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--decor-line);
+  border-radius: 0;
+}
+.typora-loading {
+  position: absolute;
+  z-index: 20;
+  top: 15px;
+  left: 24px;
+  color: var(--faint);
+  font-size: 10px;
+}
+.typora-editor-shell.ready .typora-loading {
+  display: none;
+}
 .markdown-preview {
   overflow-y: auto;
   flex: 1;
