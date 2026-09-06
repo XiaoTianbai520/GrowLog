@@ -23,7 +23,36 @@ import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 import { attachmentUrl } from '../api';
 import type { NoteSession } from '../lib/note-session';
-import { resolveTyporaShortcut, type TyporaShortcutAction } from '../lib/typora-shortcuts';
+import {
+  resolveTyporaShortcut,
+  TYPORA_SHORTCUT_LABELS,
+  type TyporaShortcutAction,
+} from '../lib/typora-shortcuts';
+
+const toolbarShortcuts = {
+  bold: ['Ctrl+B', 'Control+B'],
+  italic: ['Ctrl+I', 'Control+I'],
+  strikethrough: ['Alt+Shift+5', 'Alt+Shift+5'],
+  code: ['Ctrl+Shift+`', 'Control+Shift+`'],
+  link: ['Ctrl+K', 'Control+K'],
+} as const;
+
+const topBarHints = [
+  ['粗体', TYPORA_SHORTCUT_LABELS.bold, 'Control+B'],
+  ['斜体', TYPORA_SHORTCUT_LABELS.italic, 'Control+I'],
+  ['删除线', TYPORA_SHORTCUT_LABELS.strikethrough, 'Alt+Shift+5'],
+  ['行内代码', TYPORA_SHORTCUT_LABELS.inlineCode, 'Control+Shift+`'],
+  ['无序列表', TYPORA_SHORTCUT_LABELS.bulletList, 'Control+Shift+]'],
+  ['有序列表', TYPORA_SHORTCUT_LABELS.orderedList, 'Control+Shift+['],
+  ['任务列表', '', ''],
+  ['链接', TYPORA_SHORTCUT_LABELS.link, 'Control+K'],
+  ['图片', TYPORA_SHORTCUT_LABELS.image, 'Control+Shift+I'],
+  ['表格', TYPORA_SHORTCUT_LABELS.table, 'Control+T'],
+  ['代码块', TYPORA_SHORTCUT_LABELS.codeBlock, 'Control+Shift+K'],
+  ['公式块', TYPORA_SHORTCUT_LABELS.mathBlock, 'Control+Shift+M'],
+  ['引用', TYPORA_SHORTCUT_LABELS.quote, 'Control+Shift+Q'],
+  ['分隔线', '', ''],
+] as const;
 
 interface Props {
   body: string;
@@ -94,7 +123,9 @@ export function TyporaEditor({
           if (view.state.selection.empty) {
             const mark = inlineCodeSchema.type(ctx);
             const active = view.state.storedMarks?.some((item) => item.type === mark);
-            view.dispatch(active ? view.state.tr.removeStoredMark(mark) : view.state.tr.addStoredMark(mark.create()));
+            view.dispatch(
+              active ? view.state.tr.removeStoredMark(mark) : view.state.tr.addStoredMark(mark.create()),
+            );
           } else {
             commands.call(toggleInlineCodeCommand.key);
           }
@@ -139,6 +170,7 @@ export function TyporaEditor({
   useEffect(() => {
     if (!host.current) return;
     let disposed = false;
+    let shortcutObserver: MutationObserver | undefined;
     const crepe = new Crepe({
       root: host.current,
       defaultValue: body,
@@ -179,6 +211,16 @@ export function TyporaEditor({
           codeLabel: '行内代码',
           linkLabel: '链接',
           latexLabel: '公式',
+          buildToolbar: (builder) => {
+            for (const group of builder.build()) {
+              for (const item of group.items) {
+                const shortcut = toolbarShortcuts[item.key as keyof typeof toolbarShortcuts];
+                if (!shortcut) continue;
+                item.shortcut = shortcut[0];
+                item.ariaKeyshortcuts = shortcut[1];
+              }
+            }
+          },
         },
         [CrepeFeature.CodeMirror]: {
           searchPlaceholder: '搜索代码语言',
@@ -207,11 +249,40 @@ export function TyporaEditor({
     void crepe
       .create()
       .then(() => {
-        if (!disposed) setReady(true);
+        if (disposed) return;
+        const decorateShortcutHints = () => {
+          const editorHost = host.current;
+          if (!editorHost) return;
+          const headingButton = editorHost.querySelector<HTMLElement>('.top-bar-heading-button');
+          if (headingButton) {
+            headingButton.title = '段落样式（Ctrl+0–6）';
+            headingButton.setAttribute('aria-label', '段落样式');
+          }
+          editorHost.querySelectorAll<HTMLElement>('.top-bar-heading-option').forEach((option, level) => {
+            const shortcut = TYPORA_SHORTCUT_LABELS.heading[level];
+            if (shortcut) {
+              option.title = `${option.textContent?.trim() || '段落样式'}（${shortcut}）`;
+              option.setAttribute('aria-keyshortcuts', `Control+${level}`);
+            }
+          });
+          editorHost.querySelectorAll<HTMLElement>('.top-bar-item').forEach((button, index) => {
+            const hint = topBarHints[index];
+            if (!hint) return;
+            const [label, shortcut, ariaShortcut] = hint;
+            button.title = shortcut ? `${label}（${shortcut}）` : label;
+            button.setAttribute('aria-label', label);
+            if (ariaShortcut) button.setAttribute('aria-keyshortcuts', ariaShortcut);
+          });
+        };
+        decorateShortcutHints();
+        shortcutObserver = new MutationObserver(decorateShortcutHints);
+        shortcutObserver.observe(host.current!, { childList: true, subtree: true });
+        setReady(true);
       })
       .catch((error) => reportRef.current(error));
     return () => {
       disposed = true;
+      shortcutObserver?.disconnect();
       syncMarkdown();
       crepeRef.current = null;
       void crepe.destroy();

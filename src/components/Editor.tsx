@@ -27,7 +27,11 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import type { NoteSession } from '../lib/note-session';
-import { resolveTyporaShortcut, type TyporaShortcutAction } from '../lib/typora-shortcuts';
+import {
+  resolveTyporaShortcut,
+  TYPORA_SHORTCUT_LABELS,
+  type TyporaShortcutAction,
+} from '../lib/typora-shortcuts';
 
 export type EditorMode = 'live' | 'source' | 'read';
 interface Props {
@@ -268,44 +272,81 @@ export function Editor({
     <div className="editor-body">
       {!deleted && mode === 'source' && (
         <div className="format-toolbar" aria-label="Markdown 工具栏">
-          <button title="标题" aria-label="插入标题" onClick={() => insert('## ', '标题')}>
+          <button
+            title={`二级标题（${TYPORA_SHORTCUT_LABELS.heading[2]}）`}
+            aria-label="插入二级标题"
+            aria-keyshortcuts="Control+2"
+            onClick={() => insert('## ', '标题')}
+          >
             <Heading2 size={17} />
           </button>
-          <button title="粗体" aria-label="插入粗体" onClick={() => insert('**', '粗体文字', '**')}>
+          <button
+            title={`粗体（${TYPORA_SHORTCUT_LABELS.bold}）`}
+            aria-label="插入粗体"
+            aria-keyshortcuts="Control+B"
+            onClick={() => insert('**', '粗体文字', '**')}
+          >
             <Bold size={16} />
           </button>
-          <button title="斜体" aria-label="插入斜体" onClick={() => insert('*', '斜体文字', '*')}>
+          <button
+            title={`斜体（${TYPORA_SHORTCUT_LABELS.italic}）`}
+            aria-label="插入斜体"
+            aria-keyshortcuts="Control+I"
+            onClick={() => insert('*', '斜体文字', '*')}
+          >
             <Italic size={16} />
           </button>
           <i />
-          <button title="列表" aria-label="插入列表" onClick={() => insert('- ', '列表项')}>
+          <button
+            title={`无序列表（${TYPORA_SHORTCUT_LABELS.bulletList}）`}
+            aria-label="插入无序列表"
+            aria-keyshortcuts="Control+Shift+]"
+            onClick={() => insert('- ', '列表项')}
+          >
             <List size={17} />
           </button>
           <button title="勾选项" aria-label="插入勾选项" onClick={() => insert('- [ ] ', '待办事项')}>
             <ListChecks size={17} />
           </button>
-          <button title="引用" aria-label="插入引用" onClick={() => insert('> ', '引用文字')}>
+          <button
+            title={`引用（${TYPORA_SHORTCUT_LABELS.quote}）`}
+            aria-label="插入引用"
+            aria-keyshortcuts="Control+Shift+Q"
+            onClick={() => insert('> ', '引用文字')}
+          >
             <Quote size={16} />
           </button>
           <i />
           <button
-            title="链接"
+            title={`链接（${TYPORA_SHORTCUT_LABELS.link}）`}
             aria-label="插入链接"
+            aria-keyshortcuts="Control+K"
             onClick={() => insert('[', '链接文字', '](https://example.com)')}
           >
             <Link size={16} />
           </button>
-          <button title="代码块" aria-label="插入代码块" onClick={() => insert('\n```\n', '代码', '\n```\n')}>
+          <button
+            title={`代码块（${TYPORA_SHORTCUT_LABELS.codeBlock}）`}
+            aria-label="插入代码块"
+            aria-keyshortcuts="Control+Shift+K"
+            onClick={() => insert('\n```\n', '代码', '\n```\n')}
+          >
             <Code2 size={17} />
           </button>
           <button
-            title="表格"
+            title={`表格（${TYPORA_SHORTCUT_LABELS.table}）`}
             aria-label="插入表格"
+            aria-keyshortcuts="Control+T"
             onClick={() => insert('\n', '| 标题 | 内容 |\n| --- | --- |\n| 项目 | 记录 |', '\n')}
           >
             <Table2 size={16} />
           </button>
-          <button title="插入图片" aria-label="插入图片" onClick={() => void addImage()}>
+          <button
+            title={`插入图片（${TYPORA_SHORTCUT_LABELS.image}）`}
+            aria-label="插入图片"
+            aria-keyshortcuts="Control+Shift+I"
+            onClick={() => void addImage()}
+          >
             <ImagePlus size={17} />
           </button>
           <span className="toolbar-hint">Markdown</span>
